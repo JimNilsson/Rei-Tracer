@@ -5,7 +5,7 @@ int main(int argc, char** argv)
 
 	Core::CreateInstance();
 	Core* core = Core::GetInstance();
-	core->Init(800, 640, false);
+	core->Init(400, 400, false);
 	InputManager* input = core->GetInputManager();
 	IGraphics* graphics = core->GetGraphics();
 

@@ -40,7 +40,7 @@ void Core::ShutDown()
 
 void Core::Init(uint32_t width, uint32_t height, bool fullscreen)
 {
-	_window = new Window();
+	_window = new Window(width, height, false);
 	_graphics = new Direct3D11();
 	_cameraManager = new CameraManager();
 	_timer = new Timer();
