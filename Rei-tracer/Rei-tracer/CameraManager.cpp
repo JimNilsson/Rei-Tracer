@@ -40,7 +40,7 @@ unsigned CameraManager::AddCamera(float posX, float posY, float posZ, float dirX
 	if (_activeCamera == -1)
 		_activeCamera = 0;
 
-	return _cameras.size() - 1;
+	return static_cast<unsigned>(_cameras.size() - 1);
 
 }
 

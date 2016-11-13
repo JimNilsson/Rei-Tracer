@@ -5,7 +5,27 @@
 #include <vector>
 #include <unordered_map>
 
+struct Sphere
+{
+	Sphere() {};
+	Sphere(float x, float y, float z, float radius)
+	{
+		posx = x; posy = y; posz = z; this->radius = radius;
+	};
+	float posx, posy, posz;
+	float radius;
+};
 
+struct Plane
+{
+	Plane() {};
+	Plane(float x, float y, float z, float d)
+	{
+		this->x = x; this->y = y; this->z = z; this->d = d;
+	}
+	float x, y, z;
+	float d;
+};
 
 
 struct PNTVertex

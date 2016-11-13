@@ -49,12 +49,14 @@ Direct3D11::Direct3D11()
 	_CreateSamplerState();
 	_CreateViewPort();
 	_CreateConstantBuffers();
+	_CreateStructuredBuffer(&_structuredBuffers[SB_SPHERES], sizeof(Sphere), 10);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_PLANES], sizeof(Plane), 10);
 	
 }
 
 Direct3D11::~Direct3D11()
 {
-	
+
 	delete _timer;
 	delete _computeWrap;
 	delete _computeShader;
@@ -67,7 +69,10 @@ Direct3D11::~Direct3D11()
 	{
 		SAFE_RELEASE(i);
 	}
-
+	for (auto& i : _structuredBuffers)
+	{
+		SAFE_DELETE(i);
+	}
 
 	SAFE_RELEASE(_backBufferUAV);
 	SAFE_RELEASE(_swapChain);
@@ -112,6 +117,14 @@ ID3D11ShaderResourceView * Direct3D11::_CreateWICTexture(const void * data, size
 
 }
 
+void Direct3D11::_Map(ID3D11Resource * resource, void * data, uint32_t stride, uint32_t count, D3D11_MAP mapType, UINT flags)
+{
+	D3D11_MAPPED_SUBRESOURCE map;
+	_deviceContext->Map(resource, 0, mapType, 0, &map);
+	memcpy(map.pData, data, stride * count);
+	_deviceContext->Unmap(resource, 0);
+}
+
 void Direct3D11::Draw()
 {
 	const Core* core = Core::GetInstance();
@@ -120,9 +133,30 @@ void Direct3D11::Draw()
 	ID3D11UnorderedAccessView* uav[] = { _backBufferUAV };
 	_deviceContext->CSSetUnorderedAccessViews(0, 1, uav, NULL);
 
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
+	_Map(resource, &_spheres[0], _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, _spheres.size()), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_structuredBuffers[SB_PLANES]->srv->GetResource(&resource);
+	_Map(resource, &_spheres[0], _structuredBuffers[SB_PLANES]->stride, min(_structuredBuffers[SB_PLANES]->count, _planes.size()), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+
+	ComputeConstants cc;
+	cc.gPlaneCount = _planes.size();
+	cc.gSphereCount = _spheres.size();
+	cc.gOBBCount = 0;
+	cc.gPointLightCount = 0;
+
+	_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS], &cc, sizeof(cc), 1, D3D11_MAP_WRITE_DISCARD, 0);
+	
+
+	_deviceContext->CSSetShaderResources(0, 1, &(_structuredBuffers[StructuredBuffers::SB_SPHERES]->srv));
+	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
+	_deviceContext->CSSetConstantBuffers(1, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS]));
+
 	_computeShader->Set();
 	_timer->Start();
-	_deviceContext->Dispatch(25, 25, 1);
+	_deviceContext->Dispatch(13, 13, 1);
 	_timer->Stop();
 	_computeShader->Unset();
 	std::stringstream ss;
@@ -132,6 +166,16 @@ void Direct3D11::Draw()
 
 	if (FAILED(_swapChain->Present(0, 0)))
 		return;
+}
+
+void Direct3D11::AddSphere(float posx, float posy, float posz, float radius)
+{
+	_spheres.push_back(std::move(Sphere(posx, posy, posz, radius)));
+}
+
+void Direct3D11::AddPlane(float x, float y, float z, float d)
+{
+	_planes.push_back(std::move(Plane(x, y, z, d)));
 }
 
 
@@ -185,5 +229,95 @@ void Direct3D11::_CreateConstantBuffers()
 	bd.ByteWidth = sizeof(PerObjectBuffer) * MAX_INSTANCES;
 	hr = _device->CreateBuffer(&bd, nullptr, &_constantBuffers[ConstantBuffers::CB_PER_INSTANCE]);
 
+	bd.ByteWidth = sizeof(ComputeConstants);
+	_device->CreateBuffer(&bd, nullptr, &_constantBuffers[CB_COMPUTECONSTANTS]);
 
+
+}
+
+void Direct3D11::_CreateStructuredBuffer(StructuredBuffer ** buffer, unsigned int stride, unsigned int count, bool CPUWrite, bool GPUWrite, void * initdata)
+{
+	D3D11_BUFFER_DESC bd;
+	bd.ByteWidth = stride * count;
+	bd.StructureByteStride = stride;
+	bd.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+
+	if (CPUWrite && !GPUWrite)
+	{
+		bd.Usage = D3D11_USAGE_DYNAMIC;
+		bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else if (GPUWrite && !CPUWrite)
+	{
+		bd.Usage = D3D11_USAGE_DEFAULT;
+		bd.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+		bd.CPUAccessFlags = 0;
+	}
+	else if (!CPUWrite && !GPUWrite)
+	{
+		bd.Usage = D3D11_USAGE_IMMUTABLE;
+		bd.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		bd.CPUAccessFlags = 0;
+	}
+	else
+	{
+		//Cant have both CPU and GPU write access
+		throw std::exception("A structued buffer can't have both CPU and GPU write aceess");
+	}
+
+	D3D11_SUBRESOURCE_DATA data;
+	data.pSysMem = initdata; //nullptr unless otherwise specified
+	data.SysMemPitch = 0;
+	data.SysMemSlicePitch = 0;
+
+	*buffer = new StructuredBuffer;
+	(*buffer)->stride = stride;
+	(*buffer)->count = count;
+
+	HRESULT hr;
+	if (initdata)
+		hr = _device->CreateBuffer(&bd, &data, &((*buffer)->buffer));
+	else
+		hr = _device->CreateBuffer(&bd, nullptr, &((*buffer)->buffer));
+	if (FAILED(hr))
+	{
+		delete *buffer;
+		*buffer = nullptr;
+		throw std::exception("Failed to create structured buffer");
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvd;
+	srvd.Format = DXGI_FORMAT_UNKNOWN;
+	srvd.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srvd.Buffer.FirstElement = 0;
+	srvd.Buffer.NumElements = count;
+
+	hr = _device->CreateShaderResourceView((*buffer)->buffer, &srvd, &((*buffer)->srv));
+
+	if (FAILED(hr))
+	{
+		delete *buffer;
+		*buffer = nullptr;
+		throw std::exception("Failed to create srv");
+	}
+
+	if (GPUWrite)
+	{
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavd;
+		uavd.Format = DXGI_FORMAT_UNKNOWN;
+		uavd.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		uavd.Buffer.FirstElement = 0;
+		uavd.Buffer.NumElements = count;
+		uavd.Buffer.Flags = 0;
+
+		hr = _device->CreateUnorderedAccessView((*buffer)->buffer, &uavd, &((*buffer)->uav));
+
+		if (FAILED(hr))
+		{
+			delete *buffer;
+			*buffer = nullptr;
+			throw std::exception("Failed to create srv");
+		}
+	}
 }

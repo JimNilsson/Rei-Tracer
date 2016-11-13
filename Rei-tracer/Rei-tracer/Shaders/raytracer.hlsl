@@ -16,10 +16,24 @@ struct CameraInfo
 //	CameraInfo camera;
 //}
 
+cbuffer Counts : register(b1)
+{
+	int gSphereCount;
+	int gPlaneCount;
+	int gPointLightCount;
+	int gOBBCount;
+};
+
 struct Sphere
 {
 	float3 position;
 	float radius;
+};
+
+struct Plane
+{
+	float3 normal;
+	float d;
 };
 struct Ray
 {
@@ -27,18 +41,29 @@ struct Ray
 	float3 d;
 };
 
-float RayVSSphere(Sphere s, Ray r)
+StructuredBuffer<Sphere> gSpheres : register(t0);
+StructuredBuffer<Plane> gPlanes : register(t1);
+
+void RayVSSphere(Sphere s, Ray r, out float t0, out float t1)
 {
+	t0 = -1.0f;
+	t1 = -1.0f;
 	float3 l = s.position - r.o;
-	float tca = -dot(l, r.d);
+	float tca = dot(l, r.d);
 	if (tca < 0.0f)
-		return -1.0f;
+		return;
 	float d2 = dot(l, l) - tca*tca;
 	float radius2 = s.radius * s.radius;
 	if (d2 > radius2)
-		return -1.0f;
+		return;
 	float thc = sqrt(radius2 - d2);
-	return tca - thc;
+	t0 = tca - thc;
+	t1 = tca + thc;
+}
+
+void RayVSPlane(Plane p, Ray r, out float distance)
+{
+	distance = (p.d - dot(r.o, p.normal)) / dot(r.d, p.normal);
 }
 
 RWTexture2D<float4> output : register(u0);
@@ -53,31 +78,38 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	camera.aspectratio = 1.0f;
 	camera.fardist = 50.0f;
 
-	Sphere testsphere;
-	testsphere.position = float3(-0.0f, 5.0f, -25.0f);
-	testsphere.radius = 4.0f;
+	Sphere sphere;
+	sphere.position = float3(4.0f, 2.0f, -20.0f);
+	sphere.radius = 4;
 
 	float3 rayOrigin = camera.position;
-	float3 rayDirection = camera.direction;
 	float2 pixel;
-	pixel.x = threadID.x;
-	pixel.y = threadID.y;
-	float3 farAway = camera.position + camera.direction * camera.fardist;
-	float3 rayPos = farAway;
-	rayPos.x += ((pixel.x - 200.0f) / 400.0f) * (camera.fardist / tan(camera.fov / 2.0f));
-	rayPos.y += ((pixel.y - 200.0f) / 400.0f) * (camera.fardist / camera.aspectratio);
-	
-	rayDirection = normalize(rayPos - camera.position);
+	float3 rayPos = camera.position + camera.direction * camera.fardist;
+	rayPos.x += ((threadID.x - 200.0f) / 400.0f) * (camera.fardist / tan(camera.fov / 2.0f));
+	rayPos.y += ((threadID.y - 200.0f) / 400.0f) * (camera.fardist / camera.aspectratio);
+	float3 rayDirection = normalize(rayPos - camera.position);
 
 	Ray r;
-	r.o = rayPos;
+	r.o = camera.position;
 	r.d = rayDirection;
-	float dist = RayVSSphere(testsphere, r);
-	if (dist > 0.0f)
+	float t0, t1;
+	float closestf = 9999999.0f;
+	int closest = -1;
+	for (int i = 0; i < gSphereCount; i++)
 	{
-		float3 intersection = rayDirection * dist;
-		float3 normal = normalize(intersection - testsphere.position);
-		output[threadID.xy] = float4(normal, 1.0f);
+		RayVSSphere(gSpheres[i], r, t0, t1);
+		if (t0 > 0.0f && t0 < closestf)
+		{
+			closestf = t0;
+			closest = i;
+		}
+	}
+
+	if (closest >= 0)
+	{
+		float3 intersection = rayDirection * closestf;
+		float3 normal = normalize(intersection - gSpheres[closest].position);
+		output[threadID.xy] = float4(normal.xyz, 1.0f);
 	}
 	else
 		output[threadID.xy] = float4(rayDirection.xyz, 1.0f);
