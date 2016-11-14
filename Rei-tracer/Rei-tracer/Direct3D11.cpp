@@ -134,12 +134,18 @@ void Direct3D11::Draw()
 	_deviceContext->CSSetUnorderedAccessViews(0, 1, uav, NULL);
 
 	ID3D11Resource* resource = nullptr;
-	_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
-	_Map(resource, &_spheres[0], _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, _spheres.size()), D3D11_MAP_WRITE_DISCARD, 0);
-	SAFE_RELEASE(resource);
-	_structuredBuffers[SB_PLANES]->srv->GetResource(&resource);
-	_Map(resource, &_spheres[0], _structuredBuffers[SB_PLANES]->stride, min(_structuredBuffers[SB_PLANES]->count, _planes.size()), D3D11_MAP_WRITE_DISCARD, 0);
-	SAFE_RELEASE(resource);
+	if (_spheres.size())
+	{
+		_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
+		_Map(resource, &_spheres[0], _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, _spheres.size()), D3D11_MAP_WRITE_DISCARD, 0);
+		SAFE_RELEASE(resource);
+	}
+	if (_planes.size())
+	{
+		_structuredBuffers[SB_PLANES]->srv->GetResource(&resource);
+		_Map(resource, &_planes[0], _structuredBuffers[SB_PLANES]->stride, min(_structuredBuffers[SB_PLANES]->count, _planes.size()), D3D11_MAP_WRITE_DISCARD, 0);
+		SAFE_RELEASE(resource);
+	}
 
 	ComputeConstants cc;
 	cc.gPlaneCount = _planes.size();

@@ -13,11 +13,11 @@ int main(int argc, char** argv)
 	graphics->AddSphere(10.0f, -4.0f, -10.0f, 3.0f);
 	graphics->AddSphere(15.0f, -8.0f, -40.0f, 3.0f);
 	graphics->AddSphere(0.0f, -1.0f, -40.0f, 3.0f);
-	graphics->AddPlane(1.0f, 0.0f, 0.0f, -4.0f);
-	graphics->AddPlane(-1.0f, 0.0f, 0.0f, 4.0f);
-	graphics->AddPlane(0.0f, 1.0f, 0.0f, -4.0f);
-	graphics->AddPlane(0.0f, -1.0f, 0.0f, 4.0f);
-	graphics->AddPlane(0.0f, 0.0f, 1.0f, -50.0f);
+	graphics->AddPlane(1.0f, 0.0f, 0.0f, -8.0f);
+	graphics->AddPlane(-1.0f, 0.0f, 0.0f, 8.0f);
+	graphics->AddPlane(0.0f, 1.0f, 0.0f, -8.0f);
+	graphics->AddPlane(0.0f, -1.0f, 0.0f, 8.0f);
+	graphics->AddPlane(0.0f, 0.0f, 1.0f, -40.0f);
 
 	while (!input->IsKeyDown(SDLK_ESCAPE))
 	{

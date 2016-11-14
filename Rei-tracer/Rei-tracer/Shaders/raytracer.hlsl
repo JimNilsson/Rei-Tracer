@@ -93,26 +93,39 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	r.o = camera.position;
 	r.d = rayDirection;
 	float t0, t1;
-	float closestf = 9999999.0f;
-	int closest = -1;
+	float spheredistance = camera.fardist + 1.0f;
+	int sphereindex = -1;
 	for (int i = 0; i < gSphereCount; i++)
 	{
 		RayVSSphere(gSpheres[i], r, t0, t1);
-		if (t0 > 0.0f && t0 < closestf)
+		if (t0 > 0.0f && t0 < spheredistance)
 		{
-			closestf = t0;
-			closest = i;
+			spheredistance = t0;
+			sphereindex = i;
 		}
 	}
 
-	if (closest >= 0)
+	float planedistance = camera.fardist + 1.0f;
+	int planeindex = -1;
+	for (int i = 0; i < gPlaneCount; i++)
 	{
-		float3 intersection = rayDirection * closestf;
-		float3 normal = normalize(intersection - gSpheres[closest].position);
+		RayVSPlane(gPlanes[i], r, t0);
+		if (t0 > 0.0f && t0 < planedistance)
+		{
+			planedistance = t0;
+			planeindex = i;
+		}
+	}
+
+	if (spheredistance < planedistance && sphereindex >= 0)
+	{
+		float3 intersection = rayDirection * spheredistance;
+		float3 normal = normalize(intersection - gSpheres[sphereindex].position);
 		output[threadID.xy] = float4(normal.xyz, 1.0f);
 	}
+	else if(planedistance < spheredistance && planeindex >= 0)
+		output[threadID.xy] = float4(gPlanes[planeindex].normal, 1.0f);
 	else
 		output[threadID.xy] = float4(rayDirection.xyz, 1.0f);
-		
 	//output[threadID.xy] = float4(float3(1,0,1) * groupThreadID.x / 32.0f, 1);
 }
