@@ -35,6 +35,8 @@ unsigned CameraManager::AddCamera(float posX, float posY, float posZ, float dirX
 	cam.up = XMFLOAT3(upX, upY, upZ);
 	cam.fov = fov;
 	cam.aspectRatio = aspectRatio;
+	cam.farPlane = farPlane;
+	cam.nearPlane = nearPlane;
 	_cameras.push_back(cam);
 
 	if (_activeCamera == -1)

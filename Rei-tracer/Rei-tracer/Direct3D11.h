@@ -25,6 +25,7 @@ enum ConstantBuffers
 	CB_PER_INSTANCE,
 	CB_LIGHTBUFFER,
 	CB_COMPUTECONSTANTS,
+	CB_COMPUTECAMERA,
 	CB_COUNT
 };
 
@@ -64,6 +65,22 @@ struct ComputeConstants
 	int gPlaneCount = -1;
 	int gOBBCount = -1;
 	int gPointLightCount = -1;
+};
+
+struct ComputeCamera
+{
+	DirectX::XMFLOAT3 position;
+	float fardist;
+	DirectX::XMFLOAT3 direction;
+	float neardist;
+	DirectX::XMFLOAT3 up;
+	float aspectratio;
+	DirectX::XMFLOAT3 right;
+	float fov;
+	int width;//Technically not based on camera
+	int height;
+	float pad0;
+	float pad1;
 };
 
 enum StructuredBuffers

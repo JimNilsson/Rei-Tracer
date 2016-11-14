@@ -8,13 +8,28 @@ struct CameraInfo
 	float neardist;
 	float aspectratio;
 	float fov;
+	int width;
+	int height;
+	float pad;
+	float pad2;
 
 };
 
-//cbuffer CameraBuffer : register(b0)
-//{
-//	CameraInfo camera;
-//}
+cbuffer CameraBuffer : register(b0)
+{
+	float3 gCamPos : packoffset(c0);
+	float gCamFar : packoffset(c0.w);
+	float3 gCamDir : packoffset(c1);
+	float gCamNear : packoffset(c1.w);
+	float3 gCamUp : packoffset(c2);
+	float gAspectRatio : packoffset(c2.w);
+	float3 gCamRight : packoffset(c3);
+	float gFOV : packoffset(c3.w);
+	int gWidth : packoffset(c4.x);
+	int gHeight : packoffset(c4.y);
+	float pad : packoffset(c4.z);
+	float pad2 : packoffset(c4.w);
+}
 
 cbuffer Counts : register(b1)
 {
@@ -71,29 +86,31 @@ RWTexture2D<float4> output : register(u0);
 [numthreads(32, 32, 1)]
 void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID )
 {
-	CameraInfo camera;
-	camera.position = float3(0.0f, 0.0f, 0.0f);
-	camera.direction = float3(0.0f, 0.0f, -1.0f);
-	camera.fov = 3.14 / 2.0f;
-	camera.aspectratio = 1.0f;
-	camera.fardist = 50.0f;
+	CameraInfo gCamera;
+	//gCamera.position = float3(10.0f, 0.0f, 40.0f);
+	gCamera.position = gCamPos;
+	//gCamera.direction = float3(0.0f, 0.0f, -1.0f);
+	gCamera.direction = gCamDir;
+	gCamera.fov = gFOV;
+	//gCamera.fov = ggCamera.fov;
+	gCamera.aspectratio = 1.0f;
+	gCamera.fardist = 150.0f;
+	gCamera.neardist = 1.0f;
+	gCamera.width = 400.0f;
+	gCamera.height = 400.0f;
+	//output[threadID.xy] = float4(gCamera.position.xyz, 1.0f);
 
-	Sphere sphere;
-	sphere.position = float3(4.0f, 2.0f, -20.0f);
-	sphere.radius = 4;
-
-	float3 rayOrigin = camera.position;
-	float2 pixel;
-	float3 rayPos = camera.position + camera.direction * camera.fardist;
-	rayPos.x += ((threadID.x - 200.0f) / 400.0f) * (camera.fardist / tan(camera.fov / 2.0f));
-	rayPos.y += ((threadID.y - 200.0f) / 400.0f) * (camera.fardist / camera.aspectratio);
-	float3 rayDirection = normalize(rayPos - camera.position);
+	float3 rayPos = gCamera.position + gCamera.direction * gCamera.fardist;
+	rayPos.x += ((threadID.x - gCamera.width / 2.0f) / gCamera. width) * (gCamera.fardist / tan(gCamera.fov / 2.0f));
+	rayPos.y += ((threadID.y - gCamera.height / 2.0f) / gCamera.height) * (gCamera.fardist / gCamera.aspectratio);
+	float3 rayDirection = normalize(rayPos - gCamera.position);
+//	output[threadID.xy] = float4(rayDirection.xyz, 1.0f);
 
 	Ray r;
-	r.o = camera.position;
+	r.o = gCamera.position;
 	r.d = rayDirection;
 	float t0, t1;
-	float spheredistance = camera.fardist + 1.0f;
+	float spheredistance = gCamera.fardist + 1.0f;
 	int sphereindex = -1;
 	for (int i = 0; i < gSphereCount; i++)
 	{
@@ -105,7 +122,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		}
 	}
 
-	float planedistance = camera.fardist + 1.0f;
+	float planedistance = gCamera.fardist + 1.0f;
 	int planeindex = -1;
 	for (int i = 0; i < gPlaneCount; i++)
 	{
@@ -119,7 +136,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 
 	if (spheredistance < planedistance && sphereindex >= 0)
 	{
-		float3 intersection = rayDirection * spheredistance;
+		float3 intersection = gCamera.position + rayDirection * spheredistance;
 		float3 normal = normalize(intersection - gSpheres[sphereindex].position);
 		output[threadID.xy] = float4(normal.xyz, 1.0f);
 	}
@@ -127,5 +144,5 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		output[threadID.xy] = float4(gPlanes[planeindex].normal, 1.0f);
 	else
 		output[threadID.xy] = float4(rayDirection.xyz, 1.0f);
-	//output[threadID.xy] = float4(float3(1,0,1) * groupThreadID.x / 32.0f, 1);
+
 }

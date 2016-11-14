@@ -120,7 +120,7 @@ ID3D11ShaderResourceView * Direct3D11::_CreateWICTexture(const void * data, size
 void Direct3D11::_Map(ID3D11Resource * resource, void * data, uint32_t stride, uint32_t count, D3D11_MAP mapType, UINT flags)
 {
 	D3D11_MAPPED_SUBRESOURCE map;
-	_deviceContext->Map(resource, 0, mapType, 0, &map);
+	HRESULT hr = _deviceContext->Map(resource, 0, mapType, 0, &map);
 	memcpy(map.pData, data, stride * count);
 	_deviceContext->Unmap(resource, 0);
 }
@@ -154,10 +154,32 @@ void Direct3D11::Draw()
 	cc.gPointLightCount = 0;
 
 	_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS], &cc, sizeof(cc), 1, D3D11_MAP_WRITE_DISCARD, 0);
+
+	Camera cam = core->GetCameraManager()->GetActiveCamera();
+	ComputeCamera ccam;
+	ccam.position = cam.position;
+	ccam.direction = cam.forward;
+	ccam.fardist = cam.farPlane;
+	ccam.neardist = cam.nearPlane;
+	ccam.height = core->GetWindow()->GetHeight();
+	ccam.width = core->GetWindow()->GetWidth();
+	ccam.fov = cam.fov;
+	ccam.aspectratio = cam.aspectRatio;
+	//ccam.position = XMFLOAT3(10.0f, 0.0f, 40.0f);
+	//ccam.direction = XMFLOAT3(0.0f, 0.0f, -1.0f);
+	//ccam.fardist = 50.0f;
+	//ccam.neardist = 1.0f;
+	//ccam.height = 400.0f;
+	//ccam.width = 400.0f;
+	//ccam.fov = XM_PI / 2.0f;
+	//ccam.aspectratio = 1.0f;
+
+	_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA], &ccam, sizeof(ccam), 1, D3D11_MAP_WRITE_DISCARD, 0);
 	
 
 	_deviceContext->CSSetShaderResources(0, 1, &(_structuredBuffers[StructuredBuffers::SB_SPHERES]->srv));
 	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
+	_deviceContext->CSSetConstantBuffers(0, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA]));
 	_deviceContext->CSSetConstantBuffers(1, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS]));
 
 	_computeShader->Set();
@@ -237,6 +259,9 @@ void Direct3D11::_CreateConstantBuffers()
 
 	bd.ByteWidth = sizeof(ComputeConstants);
 	_device->CreateBuffer(&bd, nullptr, &_constantBuffers[CB_COMPUTECONSTANTS]);
+
+	bd.ByteWidth = sizeof(ComputeCamera);
+	_device->CreateBuffer(&bd, nullptr, &_constantBuffers[CB_COMPUTECAMERA]);
 
 
 }
