@@ -212,7 +212,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	else if(planedistance < spheredistance && planeindex >= 0)
 		output[threadID.xy] = float4(gPlanes[planeindex].normal, 1.0f);
 	else if(triangledist > 0.0f)
-		output[threadID.xy] = float4(narmal, 1.0f);
+		output[threadID.xy] = float4(dduu,ddvv,0.0f, 1.0f);
 	else
 		output[threadID.xy] = float4(rayDirection.xyz, 1.0f);
 
