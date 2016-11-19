@@ -19,11 +19,11 @@ int main(int argc, char** argv)
 	graphics->AddSphere(10.0f, -4.0f, -10.0f, 3.0f);
 	graphics->AddSphere(15.0f, -8.0f, -40.0f, 3.0f);
 	graphics->AddSphere(0.0f, -1.0f, -40.0f, 3.0f);
-	graphics->AddPlane(1.0f, 0.0f, 0.0f, -8.0f);
-	graphics->AddPlane(-1.0f, 0.0f, 0.0f, 8.0f);
-	graphics->AddPlane(0.0f, 1.0f, 0.0f, -8.0f);
-	graphics->AddPlane(0.0f, -1.0f, 0.0f, 8.0f);
-	graphics->AddPlane(0.0f, 0.0f, 1.0f, -40.0f);
+	//graphics->AddPlane(1.0f, 0.0f, 0.0f, -8.0f);
+	//graphics->AddPlane(-1.0f, 0.0f, 0.0f, 8.0f);
+	//graphics->AddPlane(0.0f, 1.0f, 0.0f, -8.0f);
+	//graphics->AddPlane(0.0f, -1.0f, 0.0f, 8.0f);
+	//graphics->AddPlane(0.0f, 0.0f, 1.0f, -40.0f);
 
 
 	float dt = 0.0f;
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 		if (input->IsKeyDown(SDLK_a))
 			cam->MoveRight(dt * -2.5f);
 		if (input->IsKeyDown(SDLK_d))
-			cam->MoveForward(dt * 2.5f);
+			cam->MoveRight(dt * 2.5f);
 		core->Update();
 	}
 

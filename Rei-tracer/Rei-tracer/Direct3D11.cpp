@@ -50,6 +50,8 @@ Direct3D11::Direct3D11()
 	_CreateViewPort();
 	_CreateConstantBuffers();
 	_CreateStructuredBuffer(&_structuredBuffers[SB_SPHERES], sizeof(Sphere), 10);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_TRIANGLES], sizeof(Triangle), MAX_TRIANGLES);
+	_triangles.reserve(MAX_TRIANGLES);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_PLANES], sizeof(Plane), 10);
 	
 }
@@ -140,6 +142,12 @@ void Direct3D11::Draw()
 		_Map(resource, &_spheres[0], _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, _spheres.size()), D3D11_MAP_WRITE_DISCARD, 0);
 		SAFE_RELEASE(resource);
 	}
+	if (_triangles.size())
+	{
+		_structuredBuffers[SB_TRIANGLES]->srv->GetResource(&resource);
+		_Map(resource, &_triangles[0], _structuredBuffers[SB_TRIANGLES]->stride, min(_structuredBuffers[SB_TRIANGLES]->count, _triangles.size()), D3D11_MAP_WRITE_DISCARD, 0);
+		SAFE_RELEASE(resource);
+	}
 	if (_planes.size())
 	{
 		_structuredBuffers[SB_PLANES]->srv->GetResource(&resource);
@@ -149,6 +157,7 @@ void Direct3D11::Draw()
 
 	ComputeConstants cc;
 	cc.gPlaneCount = _planes.size();
+	cc.gTriangleCount = _triangles.size();
 	cc.gSphereCount = _spheres.size();
 	cc.gOBBCount = 0;
 	cc.gPointLightCount = 0;
@@ -159,6 +168,8 @@ void Direct3D11::Draw()
 	ComputeCamera ccam;
 	ccam.position = cam.position;
 	ccam.direction = cam.forward;
+	ccam.right = cam.GetRight();
+	ccam.up = cam.up;
 	ccam.fardist = cam.farPlane;
 	ccam.neardist = cam.nearPlane;
 	ccam.height = core->GetWindow()->GetHeight();
@@ -178,7 +189,8 @@ void Direct3D11::Draw()
 	
 
 	_deviceContext->CSSetShaderResources(0, 1, &(_structuredBuffers[StructuredBuffers::SB_SPHERES]->srv));
-	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
+	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_TRIANGLES]->srv));
+	_deviceContext->CSSetShaderResources(2, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
 	_deviceContext->CSSetConstantBuffers(0, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA]));
 	_deviceContext->CSSetConstantBuffers(1, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS]));
 
@@ -188,7 +200,7 @@ void Direct3D11::Draw()
 	_timer->Stop();
 	_computeShader->Unset();
 	std::stringstream ss;
-	ss << "Time to render: " << _timer->GetTime();
+	ss << "FPS: " << static_cast<int>(10.0f / _timer->GetTime()) << "  Time to render: " << _timer->GetTime();
 
 	Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 

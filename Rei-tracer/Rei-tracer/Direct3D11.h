@@ -4,6 +4,7 @@
 #define GBUFFER_COUNT 4
 #define SAFE_RELEASE(x) {if(x){ x->Release(); x = nullptr;}};
 #define MAX_INSTANCES 32 //If you change this, also change it in InstancedStaticMeshVS.hlsl
+#define MAX_TRIANGLES 2048
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -62,9 +63,11 @@ struct StructuredBuffer
 struct ComputeConstants
 {
 	int gSphereCount = -1;
+	int gTriangleCount = -1;
 	int gPlaneCount = -1;
 	int gOBBCount = -1;
 	int gPointLightCount = -1;
+	int pad[3];
 };
 
 struct ComputeCamera
@@ -86,9 +89,9 @@ struct ComputeCamera
 enum StructuredBuffers
 {
 	SB_SPHERES,
+	SB_TRIANGLES,
 	SB_PLANES,
 	SB_OBBS,
-	SB_TRIANGLES,
 	SB_COUNT
 };
 
@@ -127,6 +130,7 @@ private:
 		
 	std::vector<Sphere> _spheres;
 	std::vector<Plane> _planes;
+	std::vector<Triangle> _triangles;
 
 
 public:

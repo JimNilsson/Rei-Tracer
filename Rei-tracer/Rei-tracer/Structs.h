@@ -27,6 +27,21 @@ struct Plane
 	float d;
 };
 
+struct TriangleVertex
+{
+	float posx, posy, posz;
+	float u;
+	float norx, nory, norz;
+	float v;
+	float tanx, tany, tanz, handedness;
+};
+
+struct Triangle
+{
+	TriangleVertex v1;
+	TriangleVertex v2;
+	TriangleVertex v3;
+};
 
 struct PNTVertex
 {
@@ -60,6 +75,16 @@ struct Camera
 	float aspectRatio;
 	float nearPlane;
 	float farPlane;
+
+	DirectX::XMFLOAT3 GetRight() const
+	{
+		 
+		DirectX::XMVECTOR f = DirectX::XMLoadFloat3(&forward);
+		DirectX::XMVECTOR u = DirectX::XMLoadFloat3(&up);
+		DirectX::XMFLOAT3 right;
+		DirectX::XMStoreFloat3(&right, DirectX::XMVector3Cross(u, f));
+		return right;
+	}
 };
 
 struct PerFrameBuffer
