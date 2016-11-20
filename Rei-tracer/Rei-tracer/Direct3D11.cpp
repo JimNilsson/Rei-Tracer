@@ -185,7 +185,7 @@ void Direct3D11::Draw()
 
 	_computeShader->Set();
 	_timer->Start();
-	_deviceContext->Dispatch(13, 13, 1);
+	_deviceContext->Dispatch((ccam.width / 32) + ((ccam.width % 32) ? 1 : 0), (ccam.height / 32) + ((ccam.height % 32) ? 1 : 0), 1);
 	_timer->Stop();
 	_computeShader->Unset();
 	std::stringstream ss;

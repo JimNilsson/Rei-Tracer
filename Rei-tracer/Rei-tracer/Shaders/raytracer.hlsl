@@ -111,11 +111,11 @@ void RayVSPlane(Plane p, Ray r, out float distance)
 	distance = (p.d - dot(r.o, p.normal)) / dot(r.d, p.normal);
 }
 
-void RayVSTriangle(Triangle t, Ray r, out float distance, out float u, out float v, out float3 normal)
+void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout float v, out float3 normal)
 {
-	distance = gCamFar;
-	u = 0.0f;
-	v = 0.0f;
+//	distance = gCamFar;
+	//u = 0.0f;
+	//v = 0.0f;
 	float3 e1 = t.v2.position - t.v1.position;
 	float3 e2 = t.v3.position - t.v1.position;
 	float3 q = cross(r.d, e2);
@@ -132,7 +132,7 @@ void RayVSTriangle(Triangle t, Ray r, out float distance, out float u, out float
 	if (bv < 0.0f || bu + bv > 1.0f)
 		return;
 	float ttt = f * dot(e2, rr);
-	if (ttt > 0.0f)
+	if (ttt > 0.0f && (ttt < distance || distance < 0))
 	{
 		distance = ttt;
 		u = bu * t.v2.u + bv * t.v3.u + (1.0f - bv - bu) * t.v1.u;
@@ -219,12 +219,12 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	int triangleIndex = -1;
 	for (int i = 0; i < gTriangleCount; i++)
 	{
-		RayVSTriangle(gTriangles[i], r, t0, dduu, ddvv, narmal);
-		if (t0 > 0.0f && t0 < triangledist)
-		{
-			triangledist = t0;
-			triangleIndex = i;
-		}
+		RayVSTriangle(gTriangles[i], r, triangledist, dduu, ddvv, narmal);
+		//if (t0 > 0.0f && t0 < triangledist)
+		//{
+		//	triangledist = t0;
+		//	triangleIndex = i;
+		//}
 	}
 	
 
@@ -247,11 +247,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		intersectionPoint += r.d * triangledist;
 		intersectionNormal = narmal;
 	}
-	PointLight pp;
-	pp.position = float3(20.5f, 5.0f, -20.5f);
-	pp.range = 30.0f;
-	pp.intensity = 1.0f;
-	pp.color = float3(1.0f, 1.0f, 1.0f);
+
 	float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
 	float3 lspec = float3(0.0f, 0.0f, 0.0f);
 	for (int i = 0; i < gPointLightCount; i++)
@@ -262,9 +258,9 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		ldiffuse += tempdiff;
 		lspec += tempspec;
 	}
-//	PointLightContribution(intersectionPoint, intersectionNormal, pp, lspec, ldiffuse);
+
 
 //	output[threadID.xy] = float4(length(ldiffuse).xxx, 1.0f);
 //	output[threadID.xy] = float4(intersectionPoint.xyz, 1.0f);
-	output[threadID.xy] = saturate(float4(intersectionNormal * (ldiffuse + lspec) , 1.0f));
+	output[threadID.xy] = saturate(float4(abs(intersectionNormal) * (ldiffuse + lspec) , 1.0f));
 }

@@ -5,7 +5,7 @@ int main(int argc, char** argv)
 
 	Core::CreateInstance();
 	Core* core = Core::GetInstance();
-	core->Init(400, 400, false);
+	core->Init(800, 640, false);
 	InputManager* input = core->GetInputManager();
 	IGraphics* graphics = core->GetGraphics();
 	CameraManager* cam = core->GetCameraManager();
@@ -16,30 +16,45 @@ int main(int argc, char** argv)
 	cam->CycleActiveCamera();
 
 	Sphere spheres[5];
-	spheres[0] = Sphere(-0.0f, 10.0f, -0.0f, 3.0f);
-	spheres[1] = Sphere(10.0f, 4.0f, -10.0f, 3.0f);
-	spheres[2] = Sphere(15.0f, 8.0f, -40.0f, 3.0f);
-	spheres[3] = Sphere(20.0f, 4.0f, -30.0f, 3.0f);
-	spheres[4] = Sphere(5.0f, 5.0f, -5.0f, 0.05f);
+	spheres[0] = Sphere(4.0f, 10.0f, -5.0f, 1.0f);
+	spheres[1] = Sphere(10.0f, 4.0f, -15.0f, 1.0f);
+	spheres[2] = Sphere(15.0f, 8.0f, -5.0f, 1.0f);
+	spheres[3] = Sphere(17.0f, 4.0f, -10.0f, 1.0f);
+	spheres[4] = Sphere(5.0f, 5.0f, -5.0f, 1.0f);
 	graphics->SetSpheres(spheres, 5);
 
 
-	Triangle triangles[4];
+	Triangle triangles[5];
 	triangles[0] = Triangle(TriangleVertex(0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(100, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(0, 0, -100, 0, 0, 1, 0, 1, 1, 0, 0, 0));
-	triangles[1] = Triangle(TriangleVertex(0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
-		TriangleVertex(0, 0, -100, 1, 0, 1, 0, 0, 0, 1, 0, 0),
-		TriangleVertex(0, 100, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0));
-
-	graphics->SetTriangles(triangles, 1);
+	triangles[1] = Triangle(TriangleVertex(0, 20, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0),
+		TriangleVertex(100, 20, 0, 1, 0, -1, 0, 0, 1, 0, 0, 0),
+		TriangleVertex(0, 20, -100, 0, 0, -1, 0, 1, 1, 0, 0, 0));
+	triangles[2] = Triangle(TriangleVertex(0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
+		TriangleVertex(0, 0, -100, 1, 1, 0, 0, 0, 0, 1, 0, 0),
+		TriangleVertex(0, 100, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0));
+	triangles[3] = Triangle(TriangleVertex(20, 0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0),
+		TriangleVertex(20, 0, -100, 1, -1, 0, 0, 0, 0, 1, 0, 0),
+		TriangleVertex(20, 100, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0));
+	triangles[4] = Triangle(
+		TriangleVertex(-50, 0, -20, 0,
+		0, 0, 1, 0,
+		1, 0, 0, 0),
+		TriangleVertex(100, 0, -20, 1,
+			0, 0, 1, 0,
+			0, 1, 0, 0),
+		TriangleVertex(100, 100, -20, 0,
+			0, 0, 1, 1,
+			0, 1, 0, 0));
+	graphics->SetTriangles(triangles, 5);
 
 	PointLight pointlights[10];
-	pointlights[0] = PointLight(10.0f, 30.0f, -25.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
-	pointlights[1] = PointLight(10.0f, 12.0f, -45.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
-	pointlights[2] = PointLight(40.0f, 30.0f, -25.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
-	pointlights[3] = PointLight(0.0f, 10.0f, -55.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
-	graphics->SetPointLights(pointlights, 2);
+	pointlights[0] = PointLight(10.0f, 15.0f, -8.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
+	pointlights[1] = PointLight(10.0f, 12.0f, -5.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
+	pointlights[2] = PointLight(12.0f, 7.0f, -15.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
+	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
+	graphics->SetPointLights(pointlights, 4);
 
 
 	float dt = 0.0f;
