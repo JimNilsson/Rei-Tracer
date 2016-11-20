@@ -53,7 +53,26 @@ Direct3D11::Direct3D11()
 	_CreateStructuredBuffer(&_structuredBuffers[SB_TRIANGLES], sizeof(Triangle), MAX_TRIANGLES);
 	_triangles.reserve(MAX_TRIANGLES);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_PLANES], sizeof(Plane), 10);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_POINTLIGHTS], sizeof(PointLight), MAX_POINTLIGHTS);
 	
+	//Triangle ray test
+	//XMVECTOR v1 = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	//XMVECTOR v2 = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f);
+	//XMVECTOR v3 = XMVectorSet(1.0f, 0.0f, 0.0f, 1.0f);
+
+	//XMVECTOR e1 = v2 - v1;
+	//XMVECTOR e2 = v3 - v1;
+	//XMVECTOR d = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	//XMVECTOR o = XMVectorSet(0.25f, 0.25f, -15.0f, 0.0f);
+	//XMVECTOR q = XMVector3Cross(d, e2);
+	//float a = XMVectorGetX(XMVector3Dot(e1, q));
+	//float f = 1.0f / a;
+	//XMVECTOR s = o - v1;
+	//float u = f * XMVectorGetX(XMVector3Dot(s, q));
+	//XMVECTOR r = XMVector3Cross(s, e1);
+	//float v = f * XMVectorGetX(XMVector3Dot(d, r));
+	//float distance = f * XMVectorGetX(XMVector3Dot(e2, r));
+	//int ddd = 5;
 }
 
 Direct3D11::~Direct3D11()
@@ -135,34 +154,11 @@ void Direct3D11::Draw()
 	ID3D11UnorderedAccessView* uav[] = { _backBufferUAV };
 	_deviceContext->CSSetUnorderedAccessViews(0, 1, uav, NULL);
 
-	ID3D11Resource* resource = nullptr;
-	if (_spheres.size())
+	if (_computeConstantsUpdated)
 	{
-		_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
-		_Map(resource, &_spheres[0], _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, _spheres.size()), D3D11_MAP_WRITE_DISCARD, 0);
-		SAFE_RELEASE(resource);
+		_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS], &_computeConstants, sizeof(ComputeConstants), 1, D3D11_MAP_WRITE_DISCARD, 0);
+		_computeConstantsUpdated = false;
 	}
-	if (_triangles.size())
-	{
-		_structuredBuffers[SB_TRIANGLES]->srv->GetResource(&resource);
-		_Map(resource, &_triangles[0], _structuredBuffers[SB_TRIANGLES]->stride, min(_structuredBuffers[SB_TRIANGLES]->count, _triangles.size()), D3D11_MAP_WRITE_DISCARD, 0);
-		SAFE_RELEASE(resource);
-	}
-	if (_planes.size())
-	{
-		_structuredBuffers[SB_PLANES]->srv->GetResource(&resource);
-		_Map(resource, &_planes[0], _structuredBuffers[SB_PLANES]->stride, min(_structuredBuffers[SB_PLANES]->count, _planes.size()), D3D11_MAP_WRITE_DISCARD, 0);
-		SAFE_RELEASE(resource);
-	}
-
-	ComputeConstants cc;
-	cc.gPlaneCount = _planes.size();
-	cc.gTriangleCount = _triangles.size();
-	cc.gSphereCount = _spheres.size();
-	cc.gOBBCount = 0;
-	cc.gPointLightCount = 0;
-
-	_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS], &cc, sizeof(cc), 1, D3D11_MAP_WRITE_DISCARD, 0);
 
 	Camera cam = core->GetCameraManager()->GetActiveCamera();
 	ComputeCamera ccam;
@@ -176,14 +172,6 @@ void Direct3D11::Draw()
 	ccam.width = core->GetWindow()->GetWidth();
 	ccam.fov = cam.fov;
 	ccam.aspectratio = cam.aspectRatio;
-	//ccam.position = XMFLOAT3(10.0f, 0.0f, 40.0f);
-	//ccam.direction = XMFLOAT3(0.0f, 0.0f, -1.0f);
-	//ccam.fardist = 50.0f;
-	//ccam.neardist = 1.0f;
-	//ccam.height = 400.0f;
-	//ccam.width = 400.0f;
-	//ccam.fov = XM_PI / 2.0f;
-	//ccam.aspectratio = 1.0f;
 
 	_Map(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA], &ccam, sizeof(ccam), 1, D3D11_MAP_WRITE_DISCARD, 0);
 	
@@ -191,6 +179,7 @@ void Direct3D11::Draw()
 	_deviceContext->CSSetShaderResources(0, 1, &(_structuredBuffers[StructuredBuffers::SB_SPHERES]->srv));
 	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_TRIANGLES]->srv));
 	_deviceContext->CSSetShaderResources(2, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
+	_deviceContext->CSSetShaderResources(3, 1, &(_structuredBuffers[StructuredBuffers::SB_POINTLIGHTS]->srv));
 	_deviceContext->CSSetConstantBuffers(0, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA]));
 	_deviceContext->CSSetConstantBuffers(1, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS]));
 
@@ -208,14 +197,55 @@ void Direct3D11::Draw()
 		return;
 }
 
-void Direct3D11::AddSphere(float posx, float posy, float posz, float radius)
+
+//void Direct3D11::AddTriangleList(Triangle * triangles, size_t count)
+//{
+//	if (_triangles.size() + count < MAX_TRIANGLES)
+//	{
+//		memcpy(&_triangles[_triangles.size()], triangles, sizeof(Triangle) * count);
+//	}
+//}
+
+void Direct3D11::IncreaseBounceCount()
 {
-	_spheres.push_back(std::move(Sphere(posx, posy, posz, radius)));
+	_computeConstants.gBounceCounts = min(10, _computeConstants.gBounceCounts + 1);
+	_computeConstantsUpdated = true;
 }
 
-void Direct3D11::AddPlane(float x, float y, float z, float d)
+void Direct3D11::DecreaseBounceCount()
 {
-	_planes.push_back(std::move(Plane(x, y, z, d)));
+	_computeConstants.gBounceCounts = max(0, _computeConstants.gBounceCounts - 1);
+	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetPointLights(PointLight * pointlights, size_t count)
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_POINTLIGHTS]->srv->GetResource(&resource);
+	_Map(resource, pointlights, _structuredBuffers[SB_POINTLIGHTS]->stride, min(_structuredBuffers[SB_POINTLIGHTS]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gPointLightCount = min(_structuredBuffers[SB_POINTLIGHTS]->count, count);
+	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetTriangles(Triangle * triangles, size_t count)
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_TRIANGLES]->srv->GetResource(&resource);
+	_Map(resource, triangles, _structuredBuffers[SB_TRIANGLES]->stride, min(_structuredBuffers[SB_TRIANGLES]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gTriangleCount = min(_structuredBuffers[SB_TRIANGLES]->count, count);
+	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetSpheres(Sphere * spheres, size_t count)
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
+	_Map(resource, spheres, _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gSphereCount = min(_structuredBuffers[SB_SPHERES]->count, count);
+	_computeConstantsUpdated = true;
 }
 
 

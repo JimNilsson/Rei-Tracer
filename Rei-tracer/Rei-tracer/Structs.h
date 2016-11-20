@@ -27,6 +27,19 @@ struct Plane
 	float d;
 };
 
+struct PointLight
+{
+	PointLight() {};
+	PointLight(float x, float y, float z, float intensity, float red, float green, float blue, float range)
+	{
+		posx = x; posy = y; posz = z; this->intensity = intensity; this->red = red; this->green = green; this->blue = blue; this->range = range;
+	};
+	float posx, posy, posz;
+	float intensity;
+	float red, green, blue;
+	float range;
+};
+
 struct TriangleVertex
 {
 	float posx, posy, posz;

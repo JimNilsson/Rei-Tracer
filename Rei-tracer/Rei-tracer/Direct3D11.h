@@ -5,6 +5,7 @@
 #define SAFE_RELEASE(x) {if(x){ x->Release(); x = nullptr;}};
 #define MAX_INSTANCES 32 //If you change this, also change it in InstancedStaticMeshVS.hlsl
 #define MAX_TRIANGLES 2048
+#define MAX_POINTLIGHTS 10
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -64,10 +65,11 @@ struct ComputeConstants
 {
 	int gSphereCount = -1;
 	int gTriangleCount = -1;
+	int gBounceCounts = -1;
 	int gPlaneCount = -1;
 	int gOBBCount = -1;
 	int gPointLightCount = -1;
-	int pad[3];
+	int pad[2];
 };
 
 struct ComputeCamera
@@ -90,6 +92,7 @@ enum StructuredBuffers
 {
 	SB_SPHERES,
 	SB_TRIANGLES,
+	SB_POINTLIGHTS,
 	SB_PLANES,
 	SB_OBBS,
 	SB_COUNT
@@ -131,6 +134,11 @@ private:
 	std::vector<Sphere> _spheres;
 	std::vector<Plane> _planes;
 	std::vector<Triangle> _triangles;
+	std::vector<unsigned> _triangleOffsets;
+	unsigned _bounceCount = 0;
+
+	bool _computeConstantsUpdated = false;
+	ComputeConstants _computeConstants;
 
 
 public:
@@ -144,12 +152,13 @@ public:
 
 	//Inherited from graphics interface
 	virtual void Draw();
-	virtual void AddSphere(float posx, float posy, float posz, float radius);
-	virtual void AddPlane(float x, float y, float z, float d);
-//	virtual void CreateMeshBuffers(const SM_GUID& guid, MeshData::Vertex* vertices, uint32_t numVertices, uint32_t* indices, uint32_t indexCount);
-//	virtual void CreateShaderResource(const SM_GUID& guid, const void* data, uint32_t size);
-//	virtual void NotifyDelete(SM_GUID guid);
-//	virtual void AddToRenderQueue(const GameObject& gameObject);
+
+	//virtual void AddTriangleList(Triangle* triangles, size_t count);
+	virtual void IncreaseBounceCount();
+	virtual void DecreaseBounceCount();
+	virtual void SetPointLights(PointLight* pointlights, size_t count);
+	virtual void SetTriangles(Triangle* triangles, size_t count);
+	virtual void SetSpheres(Sphere* spheres, size_t count);
 
 	
 };

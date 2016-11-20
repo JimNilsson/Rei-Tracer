@@ -1,6 +1,6 @@
 #ifndef _IGRAPHICS_H_
 #define _IGRAPHICS_H_
-
+#include "Structs.h"
 
 class IGraphics
 {
@@ -8,9 +8,11 @@ public:
 	IGraphics() {};
 	virtual ~IGraphics() {};
 
-	//virtual void NotifyDelete(SM_GUID guid) = 0;
-	virtual void AddSphere(float posx, float posy, float posz, float radius) = 0;
-	virtual void AddPlane(float x, float y, float z, float d) = 0; 
+	virtual void IncreaseBounceCount() = 0;
+	virtual void DecreaseBounceCount() = 0;
+	virtual void SetTriangles(Triangle* triangles, size_t count) = 0;
+	virtual void SetSpheres(Sphere* spheres, size_t count) = 0;
+	virtual void SetPointLights(PointLight* pointlights, size_t count) = 0;
 	virtual void Draw() = 0;
 	//CreateBuffer(Resource* ) is too generic to work. Depending on what kind of buffers/shader resource views need to be created
 	//"Resource" needs to be able to hold a lot of different data structures which makes a fucking mess.
