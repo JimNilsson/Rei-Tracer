@@ -65,10 +65,10 @@ struct ComputeConstants
 {
 	int gSphereCount = -1;
 	int gTriangleCount = -1;
+	int gPointLightCount = -1;
 	int gBounceCounts = -1;
 	int gPlaneCount = -1;
 	int gOBBCount = -1;
-	int gPointLightCount = -1;
 	int pad[2];
 };
 

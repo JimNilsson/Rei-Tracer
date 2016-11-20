@@ -35,9 +35,9 @@ cbuffer Counts : register(b1)
 {
 	int gSphereCount;
 	int gTriangleCount;
+	int gPointLightCount;
 	int gBounceCount;
 	int gPlaneCount;
-	int gPointLightCount;
 	int gOBBCount;
 	int pad1;
 	int pad3;
@@ -147,18 +147,29 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 	diffuse = float3(0.0f, 0.0f, 0.0f);
 	float3 toLight = pointlight.position - origin;
 	float dist = length(toLight);
-	if (dist > pointlight.range)
-		return;
+	//if (dist > pointlight.range)
+	//	return;
 	toLight = toLight / dist;
 	float NdL = dot(toLight, normal);
 	if (NdL < 0.0f)
 		return; //No contribution at all, return
+	//Check for occlusion (shadows)
+	float t0, t1;
+	Ray r;
+	r.o = origin;
+	r.d = toLight;
+	for (int i = 0; i < gSphereCount; i++)
+	{
+		RayVSSphere(gSpheres[i], r, t0, t1);
+		if (t0 > 0.0f && t0 < dist)
+			return;
+	}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
 	diffuse = saturate(NdL * pointlight.color * attenuation);
 	float3 halfVector = normalize(toLight + normalize(gCamPos - origin));
 	float NdH = saturate(dot(normal, halfVector));
-	specular = saturate(pointlight.color * pow(NdH, 6.0f) * attenuation);
+	specular = saturate(pointlight.color * pow(NdH, 96.0f) * attenuation);
 	
 }
 
@@ -237,7 +248,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		intersectionNormal = narmal;
 	}
 	PointLight pp;
-	pp.position = float3(20.5f, 12.0f, -20.5f);
+	pp.position = float3(20.5f, 5.0f, -20.5f);
 	pp.range = 30.0f;
 	pp.intensity = 1.0f;
 	pp.color = float3(1.0f, 1.0f, 1.0f);
@@ -251,7 +262,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		ldiffuse += tempdiff;
 		lspec += tempspec;
 	}
-	PointLightContribution(intersectionPoint, intersectionNormal, pp, lspec, ldiffuse);
+//	PointLightContribution(intersectionPoint, intersectionNormal, pp, lspec, ldiffuse);
 
 //	output[threadID.xy] = float4(length(ldiffuse).xxx, 1.0f);
 //	output[threadID.xy] = float4(intersectionPoint.xyz, 1.0f);

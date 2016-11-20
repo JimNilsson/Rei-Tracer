@@ -24,16 +24,22 @@ int main(int argc, char** argv)
 	graphics->SetSpheres(spheres, 5);
 
 
-	Triangle triangles[1];
+	Triangle triangles[4];
 	triangles[0] = Triangle(TriangleVertex(0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(100, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(0, 0, -100, 0, 0, 1, 0, 1, 1, 0, 0, 0));
+	triangles[1] = Triangle(TriangleVertex(0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
+		TriangleVertex(0, 0, -100, 1, 0, 1, 0, 0, 0, 1, 0, 0),
+		TriangleVertex(0, 100, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0));
 
 	graphics->SetTriangles(triangles, 1);
 
-	PointLight pointlights[1];
-	pointlights[0] = PointLight(0, -10.0f, -25.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
-	graphics->SetPointLights(pointlights, 1);
+	PointLight pointlights[10];
+	pointlights[0] = PointLight(10.0f, 30.0f, -25.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
+	pointlights[1] = PointLight(10.0f, 12.0f, -45.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
+	pointlights[2] = PointLight(40.0f, 30.0f, -25.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
+	pointlights[3] = PointLight(0.0f, 10.0f, -55.0f, 1.0f, 1.0f, 1.0f, 1.0f, 50.0f);
+	graphics->SetPointLights(pointlights, 2);
 
 
 	float dt = 0.0f;
