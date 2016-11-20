@@ -42,6 +42,11 @@ struct PointLight
 
 struct TriangleVertex
 {
+	TriangleVertex() {};
+	TriangleVertex(float px, float py, float pz, float u, float nx, float ny, float nz, float v, float tx, float ty, float tz, float handed)
+	{
+		posx = px; posy = py; posz = pz; this->u = u; norx = nx; nory = ny; norz = nz, this->v = v; tanx = tx; tany = ty; tanz = tz; handedness = handed;
+	};
 	float posx, posy, posz;
 	float u;
 	float norx, nory, norz;
@@ -51,6 +56,13 @@ struct TriangleVertex
 
 struct Triangle
 {
+	Triangle() {};
+	Triangle(TriangleVertex v1, TriangleVertex v2, TriangleVertex v3)
+	{
+		this->v1 = v1;
+		this->v2 = v2;
+		this->v3 = v3;
+	}
 	TriangleVertex v1;
 	TriangleVertex v2;
 	TriangleVertex v3;

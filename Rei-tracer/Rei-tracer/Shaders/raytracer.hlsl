@@ -158,7 +158,7 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 	diffuse = saturate(NdL * pointlight.color * attenuation);
 	float3 halfVector = normalize(toLight + normalize(gCamPos - origin));
 	float NdH = saturate(dot(normal, halfVector));
-	specular = saturate(pointlight.color * pow(NdH, 12.0f) * attenuation);
+	specular = saturate(pointlight.color * pow(NdH, 6.0f) * attenuation);
 	
 }
 
@@ -200,27 +200,22 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		}
 	}
 
-	
-	Triangle t;
-	t.v1.position = float3(0.0f, 0.0f, 0.0f);
-	t.v2.position = float3(0.0f, 0.0f, -10.0f);
-	t.v3.position = float3(-10.0f, 0.0f, 0.0f);
-	t.v1.normal = float3(0.0f, 1.0f, 0.0f);
-	t.v2.normal = float3(0.0f, 1.0f, 0.0f);
-	t.v3.normal = float3(0.0f, 1.0f, 0.0f);
-	t.v1.u = 0.0f;
-	t.v1.v = 0.0f;
-	t.v2.u = 1.0f;
-	t.v2.v = 0.0f;
-	t.v3.u = 1.0f;
-	t.v3.v = 1.0f;
 
 	float dduu = 0.0f;
 	float ddvv = 0.0f;
 	float3 narmal = float3(0.0f, 0.0f, 0.0f);
 	float triangledist = gCamFar;
+	int triangleIndex = -1;
+	for (int i = 0; i < gTriangleCount; i++)
+	{
+		RayVSTriangle(gTriangles[i], r, t0, dduu, ddvv, narmal);
+		if (t0 > 0.0f && t0 < triangledist)
+		{
+			triangledist = t0;
+			triangleIndex = i;
+		}
+	}
 	
-	RayVSTriangle(t, r, triangledist, dduu, ddvv, narmal);
 
 	float3 intersectionNormal = r.d;
 	float3 intersectionPoint = r.o;
@@ -242,7 +237,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		intersectionNormal = narmal;
 	}
 	PointLight pp;
-	pp.position = float3(0.5f, 2.0f, -0.5f);
+	pp.position = float3(20.5f, 12.0f, -20.5f);
 	pp.range = 30.0f;
 	pp.intensity = 1.0f;
 	pp.color = float3(1.0f, 1.0f, 1.0f);
@@ -260,5 +255,5 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 
 //	output[threadID.xy] = float4(length(ldiffuse).xxx, 1.0f);
 //	output[threadID.xy] = float4(intersectionPoint.xyz, 1.0f);
-	output[threadID.xy] = float4(intersectionNormal * (ldiffuse + 0.15) + intersectionNormal * lspec , 1.0f);
+	output[threadID.xy] = saturate(float4(intersectionNormal * (ldiffuse + lspec) , 1.0f));
 }
