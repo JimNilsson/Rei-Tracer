@@ -1,5 +1,5 @@
 #include "Core.h"
-
+#include <sstream>
 int main(int argc, char** argv)
 {
 
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 	pointlights[2] = PointLight(12.0f, 7.0f, -15.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
 	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);
 	graphics->SetPointLights(pointlights, 4);
-
+	graphics->SetBounceCount(2);
 
 	float dt = 0.0f;
 	while (!input->IsKeyDown(SDLK_ESCAPE))
@@ -77,7 +77,15 @@ int main(int argc, char** argv)
 			cam->MoveRight(dt * -2.5f);
 		if (input->IsKeyDown(SDLK_d))
 			cam->MoveRight(dt * 2.5f);
+		if (input->WasKeyPressed(SDLK_o))
+			graphics->IncreaseBounceCount();
+		if (input->WasKeyPressed(SDLK_p))
+			graphics->DecreaseBounceCount();
 		core->Update();
+		std::stringstream ss;
+		ss << "FPS: " << static_cast<int>(1.0f / timer->GetDeltaTime());
+
+		Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 	}
 
 	Core::ShutDown();

@@ -188,10 +188,11 @@ void Direct3D11::Draw()
 	_deviceContext->Dispatch((ccam.width / 32) + ((ccam.width % 32) ? 1 : 0), (ccam.height / 32) + ((ccam.height % 32) ? 1 : 0), 1);
 	_timer->Stop();
 	_computeShader->Unset();
-	std::stringstream ss;
+	_timer->GetTime();
+	/*std::stringstream ss;
 	ss << "FPS: " << static_cast<int>(10.0f / _timer->GetTime()) << "  Time to render: " << _timer->GetTime();
 
-	Core::GetInstance()->GetWindow()->SetTitle(ss.str());
+	Core::GetInstance()->GetWindow()->SetTitle(ss.str());*/
 
 	if (FAILED(_swapChain->Present(0, 0)))
 		return;
@@ -215,6 +216,12 @@ void Direct3D11::IncreaseBounceCount()
 void Direct3D11::DecreaseBounceCount()
 {
 	_computeConstants.gBounceCounts = max(0, _computeConstants.gBounceCounts - 1);
+	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetBounceCount(unsigned bounces)
+{
+	_computeConstants.gBounceCounts = min(10, bounces);
 	_computeConstantsUpdated = true;
 }
 

@@ -63,13 +63,10 @@ struct StructuredBuffer
 
 struct ComputeConstants
 {
-	int gSphereCount = -1;
-	int gTriangleCount = -1;
-	int gPointLightCount = -1;
-	int gBounceCounts = -1;
-	int gPlaneCount = -1;
-	int gOBBCount = -1;
-	int pad[2];
+	int gSphereCount = 0;
+	int gTriangleCount = 0;
+	int gPointLightCount = 0;
+	int gBounceCounts = 0;
 };
 
 struct ComputeCamera
@@ -156,6 +153,7 @@ public:
 	//virtual void AddTriangleList(Triangle* triangles, size_t count);
 	virtual void IncreaseBounceCount();
 	virtual void DecreaseBounceCount();
+	virtual void SetBounceCount(unsigned bounces);
 	virtual void SetPointLights(PointLight* pointlights, size_t count);
 	virtual void SetTriangles(Triangle* triangles, size_t count);
 	virtual void SetSpheres(Sphere* spheres, size_t count);

@@ -25,8 +25,8 @@ cbuffer CameraBuffer : register(b0)
 	float gAspectRatio : packoffset(c2.w);
 	float3 gCamRight : packoffset(c3);
 	float gFOV : packoffset(c3.w);
-	int gWidth : packoffset(c4.x);
-	int gHeight : packoffset(c4.y);
+	uint gWidth : packoffset(c4.x);
+	uint gHeight : packoffset(c4.y);
 	float pad : packoffset(c4.z);
 	float pad2 : packoffset(c4.w);
 }
@@ -37,10 +37,6 @@ cbuffer Counts : register(b1)
 	int gTriangleCount;
 	int gPointLightCount;
 	int gBounceCount;
-	int gPlaneCount;
-	int gOBBCount;
-	int pad1;
-	int pad3;
 };
 
 struct Sphere
@@ -89,10 +85,10 @@ StructuredBuffer<Triangle> gTriangles : register(t1);
 StructuredBuffer<Plane> gPlanes : register(t2);
 StructuredBuffer<PointLight> gPointLights : register(t3);
 
-void RayVSSphere(Sphere s, Ray r, out float t0, out float t1)
+void RayVSSphere(Sphere s, Ray r, out float t0)
 {
 	t0 = -1.0f;
-	t1 = -1.0f;
+	//t1 = -1.0f;
 	float3 l = s.position - r.o;
 	float tca = dot(l, r.d);
 	if (tca < 0.0f)
@@ -103,12 +99,7 @@ void RayVSSphere(Sphere s, Ray r, out float t0, out float t1)
 		return;
 	float thc = sqrt(radius2 - d2);
 	t0 = tca - thc;
-	t1 = tca + thc;
-}
-
-void RayVSPlane(Plane p, Ray r, out float distance)
-{
-	distance = (p.d - dot(r.o, p.normal)) / dot(r.d, p.normal);
+//	t1 = tca + thc;
 }
 
 void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout float v, out float3 normal)
@@ -141,10 +132,31 @@ void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout
 	}
 }
 
-void PointLightContribution(float3 origin, float3 normal, PointLight pointlight, out float3 specular, out float3 diffuse)
+//Used for checking occlusion of lights
+void RayVSTriangleDistance(Triangle t, Ray r, out float distance)
 {
-	specular = float3(0.0f, 0.0f, 0.0f);
-	diffuse = float3(0.0f, 0.0f, 0.0f);
+	float3 e1 = t.v2.position - t.v1.position;
+	float3 e2 = t.v3.position - t.v1.position;
+	float3 q = cross(r.d, e2);
+	float a = dot(e1, q); //The determinant of the matrix (-direction e1 e2)
+	if (a < 0.0001f && a > -0.0001f)
+		return; //avoid determinants close to zero since we will divide by this
+	float f = 1.0f / a;
+	float3 s = r.o - t.v1.position;
+	float bu = f * dot(s, q); //barycentric u coordinate
+	if (bu < 0.0f)
+		return;
+	float3 rr = cross(s, e1);
+	float bv = f*dot(r.d, rr); //barycentric v coordinate
+	if (bv < 0.0f || bu + bv > 1.0f)
+		return;
+	distance = f * dot(e2, rr);
+}
+
+void PointLightContribution(float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
+{
+	//specular = float3(0.0f, 0.0f, 0.0f);
+	//diffuse = float3(0.0f, 0.0f, 0.0f);
 	float3 toLight = pointlight.position - origin;
 	float dist = length(toLight);
 	//if (dist > pointlight.range)
@@ -154,22 +166,30 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 	if (NdL < 0.0f)
 		return; //No contribution at all, return
 	//Check for occlusion (shadows)
-	float t0, t1;
+	float t0;
 	Ray r;
 	r.o = origin;
 	r.d = toLight;
+	r.o += 0.0001f * r.d;
 	for (int i = 0; i < gSphereCount; i++)
 	{
-		RayVSSphere(gSpheres[i], r, t0, t1);
+		RayVSSphere(gSpheres[i], r, t0);
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
+	//for (i = 0; i < gTriangleCount; i++)
+	//{
+	//	RayVSTriangleDistance(gTriangles[i], r, t0);
+	//	if (t0 > 0.0f && t0 < dist)
+	//		return;
+	//}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
-	diffuse = saturate(NdL * pointlight.color * attenuation);
+	diffuse += saturate(NdL * pointlight.color * attenuation);
 	float3 halfVector = normalize(toLight + normalize(gCamPos - origin));
 	float NdH = saturate(dot(normal, halfVector));
-	specular = saturate(pointlight.color * pow(NdH, 96.0f) * attenuation);
+	if(NdH > 0.0f)
+		specular += saturate(pointlight.color * pow(NdH, 96.0f) * attenuation);
 	
 }
 
@@ -178,6 +198,8 @@ RWTexture2D<float4> output : register(u0);
 [numthreads(32, 32, 1)]
 void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupThreadID )
 {
+	if (threadID.x > gWidth || threadID.y > gHeight)
+		return;
 
 	float3 rayPos = gCamPos + gCamDir * gCamFar;
 	rayPos += gCamRight * ((threadID.x - gWidth / 2.0f) / gWidth) * (gCamFar / tan(gFOV / 2.0f));
@@ -186,81 +208,75 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	Ray r;
 	r.o = gCamPos;
 	r.d = normalize(rayPos - gCamPos);
-	float t0, t1;
-	float spheredistance = gCamFar;
-	int sphereindex = -1;
-	for (int i = 0; i < gSphereCount; i++)
+	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
+	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
+	for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
 	{
-		RayVSSphere(gSpheres[i], r, t0, t1);
-		if (t0 > 0.0f && t0 < spheredistance)
+		float t0;
+		float spheredistance = gCamFar;
+		int sphereindex = -1;
+		for (int i = 0; i < gSphereCount; i++)
 		{
-			spheredistance = t0;
-			sphereindex = i;
+			RayVSSphere(gSpheres[i], r, t0);
+			if (t0 > 0.0f && t0 < spheredistance)
+			{
+				spheredistance = t0;
+				sphereindex = i;
+			}
 		}
-	}
 
-	float planedistance = gCamFar;
-	int planeindex = -1;
-	for (int i = 0; i < gPlaneCount; i++)
-	{
-		RayVSPlane(gPlanes[i], r, t0);
-		if (t0 > 0.0f && t0 < planedistance)
+		float dduu = 0.0f;
+		float ddvv = 0.0f;
+		float3 narmal = float3(0.0f, 0.0f, 0.0f);
+		float triangledist = gCamFar;
+		int triangleIndex = -1;
+		for (i = 0; i < gTriangleCount; i++)
 		{
-			planedistance = t0;
-			planeindex = i;
+			RayVSTriangle(gTriangles[i], r, triangledist, dduu, ddvv, narmal);
+			//if (t0 > 0.0f && t0 < triangledist)
+			//{
+			//	triangledist = t0;
+			//	triangleIndex = i;
+			//}
 		}
-	}
 
 
-	float dduu = 0.0f;
-	float ddvv = 0.0f;
-	float3 narmal = float3(0.0f, 0.0f, 0.0f);
-	float triangledist = gCamFar;
-	int triangleIndex = -1;
-	for (int i = 0; i < gTriangleCount; i++)
-	{
-		RayVSTriangle(gTriangles[i], r, triangledist, dduu, ddvv, narmal);
-		//if (t0 > 0.0f && t0 < triangledist)
-		//{
-		//	triangledist = t0;
-		//	triangleIndex = i;
-		//}
-	}
-	
+		float3 intersectionNormal = r.d;
+		float3 intersectionPoint = r.o;
 
-	float3 intersectionNormal = r.d;
-	float3 intersectionPoint = r.o;
+		if (spheredistance < min(gCamFar, max(triangledist, 0)) && sphereindex >= 0)
+		{
+			intersectionPoint += r.d * spheredistance;
+			intersectionNormal = normalize(intersectionPoint - gSpheres[sphereindex].position);
+			//output[threadID.xy] = float4(normal.xyz, 1.0f);
+		}
+		else if (triangledist > 0.0f && dduu > 0.0f)
+		{
+			intersectionPoint += r.d * triangledist;
+			intersectionNormal = narmal;
+		}
+		else
+		{
+			break;
+		}
+		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
+		float3 lspec = float3(0.0f, 0.0f, 0.0f);
+		for (int i = 0; i < gPointLightCount; i++)
+		{
+			PointLightContribution(intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
+		}
 
-	if (spheredistance < min(gCamFar, min(planedistance, max(triangledist, 0))) && sphereindex >= 0)
-	{
-		intersectionPoint += r.d * spheredistance;
-		intersectionNormal = normalize(intersectionPoint - gSpheres[sphereindex].position);
-		//output[threadID.xy] = float4(normal.xyz, 1.0f);
-	}
-	else if (planedistance < spheredistance && planeindex >= 0)
-	{
-		intersectionPoint += r.d * planedistance;
-		intersectionNormal = gPlanes[planeindex].normal;
-	}
-	else if (triangledist > 0.0f && dduu > 0.0f)
-	{
-		intersectionPoint += r.d * triangledist;
-		intersectionNormal = narmal;
-	}
+		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1));
+		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1));
 
-	float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
-	float3 lspec = float3(0.0f, 0.0f, 0.0f);
-	for (int i = 0; i < gPointLightCount; i++)
-	{
-		float3 tempdiff = float3(0.0f, 0.0f, 0.0f);
-		float3 tempspec = float3(0.0f, 0.0f, 0.0f);
-		PointLightContribution(intersectionPoint, intersectionNormal, gPointLights[i], tempspec, tempdiff);
-		ldiffuse += tempdiff;
-		lspec += tempspec;
+		r.o = intersectionPoint;
+		r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);
+		r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 	}
 
 
 //	output[threadID.xy] = float4(length(ldiffuse).xxx, 1.0f);
 //	output[threadID.xy] = float4(intersectionPoint.xyz, 1.0f);
-	output[threadID.xy] = saturate(float4(abs(intersectionNormal) * (ldiffuse + lspec) , 1.0f));
+	//output[threadID.xy] = saturate(float4(abs(intersectionNormal) * (ldiffuse + lspec) , 1.0f));
+	output[threadID.xy] = saturate(float4(float3(1.0f, 1.0f, 1.0f) * (accumulatedDiff + accumulatedSpec), 1.0f));
 }

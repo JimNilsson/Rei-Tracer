@@ -10,6 +10,7 @@ public:
 
 	virtual void IncreaseBounceCount() = 0;
 	virtual void DecreaseBounceCount() = 0;
+	virtual void SetBounceCount(unsigned bounces) = 0;
 	virtual void SetTriangles(Triangle* triangles, size_t count) = 0;
 	virtual void SetSpheres(Sphere* spheres, size_t count) = 0;
 	virtual void SetPointLights(PointLight* pointlights, size_t count) = 0;
