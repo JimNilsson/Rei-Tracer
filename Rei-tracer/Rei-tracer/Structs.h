@@ -47,6 +47,10 @@ struct TriangleVertex
 	{
 		posx = px; posy = py; posz = pz; this->u = u; norx = nx; nory = ny; norz = nz, this->v = v; tanx = tx; tany = ty; tanz = tz; handedness = handed;
 	};
+	TriangleVertex(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& nor, const DirectX::XMFLOAT4& tan, const DirectX::XMFLOAT2& tex)
+	{
+		posx = pos.x; posy = pos.y; posz = pos.z; norx = nor.x, nory = nor.y; norz = nor.z; tanx = tan.x; tany = tan.y; tanz = tan.z; handedness = tan.w; u = tex.x; v = tex.y;
+	};
 	float posx, posy, posz;
 	float u;
 	float norx, nory, norz;

@@ -1,5 +1,6 @@
 #include "Core.h"
 #include <sstream>
+#include "OBJLoader.h"
 int main(int argc, char** argv)
 {
 
@@ -23,8 +24,9 @@ int main(int argc, char** argv)
 	spheres[4] = Sphere(5.0f, 5.0f, -5.0f, 1.0f);
 	graphics->SetSpheres(spheres, 5);
 
+	OBJLoader objLoader;
 
-	Triangle triangles[5];
+	Triangle triangles[MAX_TRIANGLES];
 	triangles[0] = Triangle(TriangleVertex(0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(100, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0),
 		TriangleVertex(0, 0, -100, 0, 0, 1, 0, 1, 1, 0, 0, 0));
@@ -47,7 +49,8 @@ int main(int argc, char** argv)
 		TriangleVertex(100, 100, -20, 0,
 			0, 0, 1, 1,
 			0, 1, 0, 0));
-	graphics->SetTriangles(triangles, 5);
+	unsigned trianglesAdded = objLoader.LoadOBJ("torus.obj", &triangles[5], MAX_TRIANGLES - 5);
+	graphics->SetTriangles(triangles, 5 + trianglesAdded);
 
 	PointLight pointlights[10];
 	pointlights[0] = PointLight(10.0f, 15.0f, -8.0f, 0.63f, 1.0f, 1.0f, 1.0f, 15.0f);

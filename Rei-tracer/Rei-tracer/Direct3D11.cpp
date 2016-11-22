@@ -30,7 +30,7 @@ Direct3D11::Direct3D11()
 	scd.SampleDesc.Quality = 0;
 	scd.Windowed = TRUE; 
 	
-	HRESULT hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, NULL, NULL, D3D11_SDK_VERSION, &scd, &_swapChain, &_device, NULL, &_deviceContext);
+	HRESULT hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, NULL, NULL, D3D11_SDK_VERSION, &scd, &_swapChain, &_device, NULL, &_deviceContext);
 	if (FAILED(hr))
 		throw std::exception("Failed to create device and swapchain");
 	
