@@ -194,12 +194,12 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 			return;
 	}
 t0 = -1.0f;
-	for (i = 0; i < gTriangleCount; i++)
-	{
-		RayVSTriangleDistance(gTriangles[i], r, t0);
-		if (t0 > 0.0f && t0 < dist)
-			return;
-	}
+	//for (i = 0; i < gTriangleCount; i++)
+	//{
+	//	RayVSTriangleDistance(gTriangles[i], r, t0);
+	//	if (t0 > 0.0f && t0 < dist)
+	//		return;
+	//}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
 	diffuse += saturate(NdL * pointlight.color * attenuation);
