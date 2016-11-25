@@ -85,10 +85,28 @@ StructuredBuffer<Triangle> gTriangles : register(t1);
 StructuredBuffer<Plane> gPlanes : register(t2);
 StructuredBuffer<PointLight> gPointLights : register(t3);
 
-void RayVSSphere(Sphere s, Ray r, out float t0)
+void RayVSSphere(Sphere s, Ray r, inout float t0, inout float3 normal)
+{
+	float3 l = s.position - r.o;
+	float tca = dot(l, r.d);
+	if (tca < 0.0f)
+		return;
+	float d2 = dot(l, l) - tca*tca;
+	float radius2 = s.radius * s.radius;
+	if (d2 > radius2)
+		return;
+	float thc = sqrt(radius2 - d2);
+	float dist = tca - thc;
+	if(dist < t0 || t0 < 0.0f)
+	{
+		t0 = tca - thc;
+		normal = normalize((r.o + r.d * dist) - s.position);
+	}
+}
+
+void RayVSSphereDistance(Sphere s, Ray r, out float t0)
 {
 	t0 = -1.0f;
-	//t1 = -1.0f;
 	float3 l = s.position - r.o;
 	float tca = dot(l, r.d);
 	if (tca < 0.0f)
@@ -99,14 +117,11 @@ void RayVSSphere(Sphere s, Ray r, out float t0)
 		return;
 	float thc = sqrt(radius2 - d2);
 	t0 = tca - thc;
-//	t1 = tca + thc;
 }
 
 void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout float v, out float3 normal)
 {
-//	distance = gCamFar;
-	//u = 0.0f;
-	//v = 0.0f;
+
 	float3 e1 = t.v2.position - t.v1.position;
 	float3 e2 = t.v3.position - t.v1.position;
 	float3 q = cross(r.d, e2);
@@ -173,7 +188,7 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 	r.o += 0.0001f * r.d;
 	for (int i = 0; i < gSphereCount; i++)
 	{
-		RayVSSphere(gSpheres[i], r, t0);
+		RayVSSphereDistance(gSpheres[i], r, t0);
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
@@ -208,57 +223,32 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	Ray r;
 	r.o = gCamPos;
 	r.d = normalize(rayPos - gCamPos);
+
+	
 	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
 	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
 	for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
 	{
-		float t0;
-		float spheredistance = gCamFar;
-		int sphereindex = -1;
+		float3 intersectionNormal = r.d;
+		float3 intersectionPoint = r.o;
+		float intersectionDistance = -1.0f;
 		for (int i = 0; i < gSphereCount; i++)
 		{
-			RayVSSphere(gSpheres[i], r, t0);
-			if (t0 > 0.0f && t0 < spheredistance)
-			{
-				spheredistance = t0;
-				sphereindex = i;
-			}
+			RayVSSphere(gSpheres[i], r, intersectionDistance, intersectionNormal);
 		}
 
 		float dduu = 0.0f;
 		float ddvv = 0.0f;
-		float3 narmal = float3(0.0f, 0.0f, 0.0f);
-		float triangledist = gCamFar;
-		int triangleIndex = -1;
 		for (i = 0; i < gTriangleCount; i++)
 		{
-			RayVSTriangle(gTriangles[i], r, triangledist, dduu, ddvv, narmal);
-			//if (t0 > 0.0f && t0 < triangledist)
-			//{
-			//	triangledist = t0;
-			//	triangleIndex = i;
-			//}
+			RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal);
 		}
 
+		intersectionPoint += r.d * intersectionDistance;
 
-		float3 intersectionNormal = r.d;
-		float3 intersectionPoint = r.o;
-
-		if (spheredistance < min(gCamFar, max(triangledist, 0)) && sphereindex >= 0)
-		{
-			intersectionPoint += r.d * spheredistance;
-			intersectionNormal = normalize(intersectionPoint - gSpheres[sphereindex].position);
-			//output[threadID.xy] = float4(normal.xyz, 1.0f);
-		}
-		else if (triangledist > 0.0f && dduu > 0.0f)
-		{
-			intersectionPoint += r.d * triangledist;
-			intersectionNormal = narmal;
-		}
-		else
-		{
+		if(intersectionDistance < 0.0f)
 			break;
-		}
+
 		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
 		float3 lspec = float3(0.0f, 0.0f, 0.0f);
 		for (int i = 0; i < gPointLightCount; i++)
@@ -266,17 +256,13 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			PointLightContribution(intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 		}
 
-		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1));
-		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1));
+		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) / intersectionDistance;
+		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) / intersectionDistance;
 
 		r.o = intersectionPoint;
 		r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);
 		r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 	}
 
-
-//	output[threadID.xy] = float4(length(ldiffuse).xxx, 1.0f);
-//	output[threadID.xy] = float4(intersectionPoint.xyz, 1.0f);
-	//output[threadID.xy] = saturate(float4(abs(intersectionNormal) * (ldiffuse + lspec) , 1.0f));
 	output[threadID.xy] = saturate(float4(float3(1.0f, 1.0f, 1.0f) * (accumulatedDiff + accumulatedSpec), 1.0f));
 }

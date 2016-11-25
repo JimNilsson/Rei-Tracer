@@ -90,9 +90,17 @@ enum StructuredBuffers
 	SB_SPHERES,
 	SB_TRIANGLES,
 	SB_POINTLIGHTS,
+	SB_TEXTUREOFFSETS,
 	SB_PLANES,
 	SB_OBBS,
 	SB_COUNT
+};
+
+struct TextureOffset
+{
+	unsigned begin;
+	unsigned end;
+	unsigned textureSlot;
 };
 
 
