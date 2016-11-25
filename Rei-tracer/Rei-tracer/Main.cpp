@@ -36,15 +36,17 @@ int main(int argc, char** argv)
 		TriangleVertex(0, 0, -100, 0,
 			0, 1, 0, 1,
 			1, 0, 0, 0));
+
 	triangles[1] = Triangle(TriangleVertex(0, 20, 0, 0,
 		0, -1, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(100, 20, 0, 1,
-			0, -1, 0, 0,
-			1, 0, 0, 0),
 		TriangleVertex(0, 20, -100, 0,
 			0, -1, 0, 1,
+			1, 0, 0, 0),
+		TriangleVertex(100, 20, 0, 1,
+			0, -1, 0, 0,
 			1, 0, 0, 0));
+
 	triangles[2] = Triangle(TriangleVertex(0, 0, 0, 0,
 		1, 0, 0, 0,
 		1, 0, 0, 0),
@@ -54,15 +56,18 @@ int main(int argc, char** argv)
 		TriangleVertex(0, 100, 0, 0,
 			1, 0, 0, 1,
 			0, 1, 0, 0));
+
 	triangles[3] = Triangle(TriangleVertex(20, 0, 0, 0,
 		-1, 0, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(20, 0, -100, 1,
-			-1, 0, 0, 0,
-			0, 1, 0, 0),
 		TriangleVertex(20, 100, 0, 0,
 			-1, 0, 0, 1,
-			0, 1, 0, 0));
+			0, 1, 0, 0),
+		TriangleVertex(20, 0, -100, 1,
+			-1, 0, 0, 0,
+			0, 1, 0, 0)
+		);
+
 	triangles[4] = Triangle(
 		TriangleVertex(-50, 0, -20, 0,
 		0, 0, 1, 0,
@@ -73,26 +78,27 @@ int main(int argc, char** argv)
 		TriangleVertex(100, 100, -20, 0,
 			0, 0, 1, 1,
 			0, 1, 0, 0));
+
 	triangles[5] = Triangle(
 		TriangleVertex(100, 0, 0, 0,
 			0, 0, -1, 0,
 			-1, 0, 0, 0),
-		TriangleVertex(100, 100, 0, 1,
-			0, 0, -1, 0,
-			-1, 0, 0, 0),
 		TriangleVertex(-100, 0, 0, 0,
 			0, 0, -1, 1,
+			-1, 0, 0, 0),
+		TriangleVertex(100, 100, 0, 1,
+			0, 0, -1, 0,
 			-1, 0, 0, 0));
 	unsigned trianglesAdded = objLoader.LoadOBJ("twopura.obj", &triangles[6], MAX_TRIANGLES - 6);
 	graphics->SetTriangles(triangles, 6 + trianglesAdded);
 
 	PointLight pointlights[10];
 	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.13f, 0.0f, 1.0f, 0.7f, 15.0f);
-	pointlights[1] = PointLight(10.0f, 12.0f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
+	pointlights[1] = PointLight(10.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
 	pointlights[2] = PointLight(12.0f, 7.0f, -15.0f, 0.63f, 0.8f, 0.8f, 0.2f, 15.0f);
 	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
 	graphics->SetPointLights(pointlights, 4);
-	graphics->SetBounceCount(2);
+	graphics->SetBounceCount(0);
 
 	float dt = 0.0f;
 	while (!input->IsKeyDown(SDLK_ESCAPE))

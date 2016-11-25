@@ -126,7 +126,7 @@ void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout flo
 	float3 e2 = t.v3.position - t.v1.position;
 	float3 q = cross(r.d, e2);
 	float a = dot(e1, q); //The determinant of the matrix (-direction e1 e2)
-	if (a < 0.0001f && a > -0.0001f)
+	if (a < 0.0001f)
 		return; //avoid determinants close to zero since we will divide by this
 	float f = 1.0f / a;
 	float3 s = r.o - t.v1.position;
@@ -169,7 +169,7 @@ void RayVSTriangleDistance(Triangle t, Ray r, out float dist)
 	dist = f * dot(e2, rr);
 }
 
-void PointLightContribution(float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
+void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
 {
 	//specular = float3(0.0f, 0.0f, 0.0f);
 	//diffuse = float3(0.0f, 0.0f, 0.0f);
@@ -194,19 +194,19 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 			return;
 	}
 t0 = -1.0f;
-	//for (i = 0; i < gTriangleCount; i++)
-	//{
-	//	RayVSTriangleDistance(gTriangles[i], r, t0);
-	//	if (t0 > 0.0f && t0 < dist)
-	//		return;
-	//}
+	for (i = 0; i < gTriangleCount; i++)
+	{
+		RayVSTriangleDistance(gTriangles[i], r, t0);
+		if (t0 > 0.0f && t0 < dist)
+			return;
+	}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
 	diffuse += saturate(NdL * pointlight.color * attenuation);
-	float3 halfVector = normalize(toLight + normalize(gCamPos - origin));
+	float3 halfVector = normalize(toLight + normalize(rayOrigin - origin));
 	float NdH = saturate(dot(normal, halfVector));
 	if(NdH > 0.0f)
-		specular += saturate(pointlight.color * pow(NdH, 196.0f) * attenuation);
+		specular += saturate(pointlight.color * pow(NdH, 6.0f) * attenuation);
 	
 }
 
@@ -255,7 +255,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		float3 lspec = float3(0.0f, 0.0f, 0.0f);
 		for (int i = 0; i < gPointLightCount; i++)
 		{
-			PointLightContribution(intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
+			PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 		}
 
 		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1));
