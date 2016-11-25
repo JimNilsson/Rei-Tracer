@@ -119,7 +119,7 @@ void RayVSSphereDistance(Sphere s, Ray r, out float t0)
 	t0 = tca - thc;
 }
 
-void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout float v, out float3 normal)
+void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout float v, out float3 normal)
 {
 
 	float3 e1 = t.v2.position - t.v1.position;
@@ -138,9 +138,9 @@ void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout
 	if (bv < 0.0f || bu + bv > 1.0f)
 		return;
 	float ttt = f * dot(e2, rr);
-	if (ttt > 0.0f && (ttt < distance || distance < 0))
+	if (ttt > 0.0f && (ttt < dist || dist < 0))
 	{
-		distance = ttt;
+		dist = ttt;
 		u = bu * t.v2.u + bv * t.v3.u + (1.0f - bv - bu) * t.v1.u;
 		v = bu * t.v2.v + bv * t.v3.v + (1.0f - bv - bu) * t.v1.v;
 		normal = bu * t.v2.normal + bv * t.v3.normal + (1.0f - bv - bu) * t.v1.normal;
@@ -148,13 +148,14 @@ void RayVSTriangle(Triangle t, Ray r, inout float distance, inout float u, inout
 }
 
 //Used for checking occlusion of lights
-void RayVSTriangleDistance(Triangle t, Ray r, out float distance)
+void RayVSTriangleDistance(Triangle t, Ray r, out float dist)
 {
+	dist = -1.0f;
 	float3 e1 = t.v2.position - t.v1.position;
 	float3 e2 = t.v3.position - t.v1.position;
 	float3 q = cross(r.d, e2);
 	float a = dot(e1, q); //The determinant of the matrix (-direction e1 e2)
-	if (a < 0.0001f && a > -0.0001f)
+	if (a < 0.0001f)
 		return; //avoid determinants close to zero since we will divide by this
 	float f = 1.0f / a;
 	float3 s = r.o - t.v1.position;
@@ -165,7 +166,7 @@ void RayVSTriangleDistance(Triangle t, Ray r, out float distance)
 	float bv = f*dot(r.d, rr); //barycentric v coordinate
 	if (bv < 0.0f || bu + bv > 1.0f)
 		return;
-	distance = f * dot(e2, rr);
+	dist = f * dot(e2, rr);
 }
 
 void PointLightContribution(float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
@@ -192,19 +193,20 @@ void PointLightContribution(float3 origin, float3 normal, PointLight pointlight,
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
-	//for (i = 0; i < gTriangleCount; i++)
-	//{
-	//	RayVSTriangleDistance(gTriangles[i], r, t0);
-	//	if (t0 > 0.0f && t0 < dist)
-	//		return;
-	//}
+t0 = -1.0f;
+	for (i = 0; i < gTriangleCount; i++)
+	{
+		RayVSTriangleDistance(gTriangles[i], r, t0);
+		if (t0 > 0.0f && t0 < dist)
+			return;
+	}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
 	diffuse += saturate(NdL * pointlight.color * attenuation);
 	float3 halfVector = normalize(toLight + normalize(gCamPos - origin));
 	float NdH = saturate(dot(normal, halfVector));
 	if(NdH > 0.0f)
-		specular += saturate(pointlight.color * pow(NdH, 96.0f) * attenuation);
+		specular += saturate(pointlight.color * pow(NdH, 196.0f) * attenuation);
 	
 }
 
