@@ -256,8 +256,8 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			PointLightContribution(intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 		}
 
-		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) / intersectionDistance;
-		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) / intersectionDistance;
+		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1));
+		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1));
 
 		r.o = intersectionPoint;
 		r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);

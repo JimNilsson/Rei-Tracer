@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 	spheres[2] = Sphere(15.0f, 8.0f, -5.0f, 1.0f);
 	spheres[3] = Sphere(17.0f, 4.0f, -10.0f, 1.0f);
 	spheres[4] = Sphere(5.0f, 5.0f, -5.0f, 1.0f);
-	//graphics->SetSpheres(spheres, 5);
+	graphics->SetSpheres(spheres, 5);
 
 	OBJLoader objLoader;
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 			-1, 0, 0, 0,
 			0, 1, 0, 0),
 		TriangleVertex(20, 100, 0, 0,
-			0, -1, 0, 1,
+			-1, 0, 0, 1,
 			0, 1, 0, 0));
 	triangles[4] = Triangle(
 		TriangleVertex(-50, 0, -20, 0,
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 			0, 0, -1, 1,
 			-1, 0, 0, 0));
 	unsigned trianglesAdded = objLoader.LoadOBJ("torus.obj", &triangles[6], MAX_TRIANGLES - 6);
-	graphics->SetTriangles(triangles, 6 /*+ trianglesAdded*/);
+	graphics->SetTriangles(triangles, 6 + trianglesAdded);
 
 	PointLight pointlights[10];
 	pointlights[0] = PointLight(10.0f, 15.0f, -8.0f, 0.63f, 0.0f, 1.0f, 0.7f, 15.0f);
