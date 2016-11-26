@@ -5,6 +5,7 @@
 #define SAFE_RELEASE(x) {if(x){ x->Release(); x = nullptr;}};
 #define MAX_INSTANCES 32 //If you change this, also change it in InstancedStaticMeshVS.hlsl
 #define MAX_TRIANGLES 2048
+#define MAX_MESHTEXTURES 8
 #define MAX_POINTLIGHTS 10
 
 #include <d3d11.h>
@@ -67,6 +68,10 @@ struct ComputeConstants
 	int gTriangleCount = 0;
 	int gPointLightCount = 0;
 	int gBounceCounts = 0;
+	int gTextureCount = 0;
+	int pad;
+	int pad2;
+	int pad3;
 };
 
 struct ComputeCamera
@@ -100,7 +105,8 @@ struct TextureOffset
 {
 	unsigned begin;
 	unsigned end;
-	unsigned textureSlot;
+	unsigned diffuseIndex;
+	unsigned normalIndex;
 };
 
 
@@ -133,18 +139,28 @@ private:
 
 	ID3D11ShaderResourceView* _CreateDDSTexture(const void* data, size_t size);
 	ID3D11ShaderResourceView* _CreateWICTexture(const void* data, size_t size);
+
+	void _CreateDDSTexture(const std::string& filename);
+	void _CreateWICTexture(const std::string& filename);
 	
 	void _Map(ID3D11Resource* resource, void* data, uint32_t stride, uint32_t count, D3D11_MAP mapType, UINT flags);
 		
 	std::vector<Sphere> _spheres;
 	std::vector<Plane> _planes;
 	std::vector<Triangle> _triangles;
-	std::vector<unsigned> _triangleOffsets;
+	std::vector<TextureOffset> _triangleTextureOffsets;
+	struct TextureWrapper
+	{
+		ID3D11ShaderResourceView* srv = nullptr;
+		unsigned slot;
+	};
+	std::unordered_map<std::string, TextureWrapper> _textures;
 	unsigned _bounceCount = 0;
 
 	bool _computeConstantsUpdated = false;
 	ComputeConstants _computeConstants;
 
+	uint8_t* _rawTextureData;
 
 public:
 	Direct3D11();
@@ -165,6 +181,7 @@ public:
 	virtual void SetPointLights(PointLight* pointlights, size_t count);
 	virtual void SetTriangles(Triangle* triangles, size_t count);
 	virtual void SetSpheres(Sphere* spheres, size_t count);
+	virtual void SetTextures(unsigned indexStart, unsigned indexCount, const std::string& filenameDiffuse, const std::string& filenameNormal );
 
 	
 };

@@ -37,6 +37,10 @@ cbuffer Counts : register(b1)
 	int gTriangleCount;
 	int gPointLightCount;
 	int gBounceCount;
+	int gTextureCount;
+	int padder1;
+	int padder2;
+	int padder3;
 };
 
 struct Sphere
@@ -80,10 +84,23 @@ struct PointLight
 	float range;
 };
 
+struct TriangleTexture
+{
+	uint lowerIndex;
+	uint upperIndex;
+	int diffuseIndex;
+	int normalIndex;
+};
+
 StructuredBuffer<Sphere> gSpheres : register(t0);
 StructuredBuffer<Triangle> gTriangles : register(t1);
-StructuredBuffer<Plane> gPlanes : register(t2);
 StructuredBuffer<PointLight> gPointLights : register(t3);
+
+StructuredBuffer<TriangleTexture> gTriangleTextureIndices : register(t4);
+Texture2DArray gMeshTextures : register(t2);
+//Texture2D gTesttex : register(t2);
+
+SamplerState gSampleAniso : register(s0);
 
 void RayVSSphere(Sphere s, Ray r, inout float t0, inout float3 normal)
 {
@@ -251,6 +268,11 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		if(intersectionDistance < 0.0f)
 			break;
 
+		/* If we intersected a triangle, save index of triangle*/
+		//Loop through gTriangleTextureIndices
+		//Find diffuseIndex and normalIndex by checking that index >= lowerindex && index <= upperindex
+		//Sample gMeshTextures[diffuseIndex] and multiply ldiffuse with this value
+
 		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
 		float3 lspec = float3(0.0f, 0.0f, 0.0f);
 		for (int i = 0; i < gPointLightCount; i++)
@@ -266,5 +288,8 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 	}
 
-	output[threadID.xy] = saturate(float4(float3(1.0f, 1.0f, 1.0f) * (accumulatedDiff + accumulatedSpec), 1.0f));
+	float2 testsam = float2(((threadID.x - gWidth / 2.0f) / gWidth), ((threadID.y - gHeight / 2.0f) / gHeight));
+	float3 calor = gMeshTextures.SampleLevel(gSampleAniso, float3(0.5f,0.5f,1), 0).xyz;
+	output[threadID.xy] = float4(calor.xyz, 1.0f);
+	//output[threadID.xy] = saturate(float4(calor * (accumulatedDiff + accumulatedSpec), 1.0f));
 }

@@ -14,6 +14,7 @@ public:
 	virtual void SetTriangles(Triangle* triangles, size_t count) = 0;
 	virtual void SetSpheres(Sphere* spheres, size_t count) = 0;
 	virtual void SetPointLights(PointLight* pointlights, size_t count) = 0;
+	virtual void SetTextures(unsigned indexStart, unsigned indexCount, const std::string& filenameDiffuse, const std::string& filenameNormal) = 0;
 	virtual void Draw() = 0;
 	//CreateBuffer(Resource* ) is too generic to work. Depending on what kind of buffers/shader resource views need to be created
 	//"Resource" needs to be able to hold a lot of different data structures which makes a fucking mess.
