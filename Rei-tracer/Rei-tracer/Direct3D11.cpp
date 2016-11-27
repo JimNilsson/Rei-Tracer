@@ -75,60 +75,12 @@ Direct3D11::Direct3D11()
 	//float distance = f * XMVectorGetX(XMVector3Dot(e2, r));
 	//int ddd = 5;
 	_rawTextureData = new uint8_t[256U * 256U * 4U * MAX_MESHTEXTURES * 2U];
-	HRESULT testerr = AppendTextureData(_rawTextureData, _device, L"testimage.png", 2048, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0, false, nullptr, &_textures["testimage.png"].srv);
-	testerr = AppendTextureData(&_rawTextureData[256U*256U*4U], _device, L"testimage2.png", 2048, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0, false, nullptr, &_textures["testimage.png"].srv);
+	//HRESULT testerr = AppendTextureData(_rawTextureData, _device, L"testimage.png");
+	//testerr = AppendTextureData(&_rawTextureData[256U*256U*4U], _device, L"rei.jpg");
 	//CreateWICTextureFromFile(_device, L"testimage.png", nullptr, &_textures["testimage.png"].srv);
 
 	// Create texture
-	D3D11_TEXTURE2D_DESC desc;
-	desc.Width = 256U;
-	desc.Height = 256U;
-	desc.MipLevels = 1;
-	desc.ArraySize = 2;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = 0;
-	
-	D3D11_SUBRESOURCE_DATA initData[MAX_MESHTEXTURES];
-	for (int i = 0; i < MAX_MESHTEXTURES; i++)
-	{
-		initData[i].pSysMem = &_rawTextureData[i * 256U * 256U * 4U];
-		initData[i].SysMemPitch = static_cast<UINT>(256U * 4U);
-		initData[i].SysMemSlicePitch = static_cast<UINT>(256U * 256U * 4U);
-	}
-	
 
-	ID3D11Texture2D* tex = nullptr;
-	
-	hr = _device->CreateTexture2D(&desc, initData, &tex);
-	if (SUCCEEDED(hr) && tex != 0)
-	{
-		if (&_textures["testimage.png"].srv != 0)
-		{
-			D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
-			memset(&SRVDesc, 0, sizeof(SRVDesc));
-			SRVDesc.Format = desc.Format;
-			
-			SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-			SRVDesc.Texture2DArray.ArraySize = 2;
-			SRVDesc.Texture2DArray.MipLevels = 1;
-			SRVDesc.Texture2DArray.MostDetailedMip = 0;
-			SRVDesc.Texture2DArray.FirstArraySlice = 0;
-
-
-
-			hr = _device->CreateShaderResourceView(tex, &SRVDesc, &_textures["testimage.png"].srv);
-			if (FAILED(hr))
-			{
-				tex->Release();
-			}
-		}
-
-	}
 }
 
 Direct3D11::~Direct3D11()
@@ -155,6 +107,7 @@ Direct3D11::~Direct3D11()
 	SAFE_RELEASE(_swapChain);
 
 	SAFE_RELEASE(_deviceContext);
+	SAFE_RELEASE(_textureArray);
 	if (_device)
 	{
 		uint32_t refCount = _device->Release();
@@ -168,44 +121,14 @@ Direct3D11::~Direct3D11()
 }
 
 
-
-/* REWRITE TO CREATE FROM MEMORY */
-ID3D11ShaderResourceView* Direct3D11::_CreateDDSTexture(const void* data, size_t size)
-{
-	ID3D11ShaderResourceView* srv = nullptr;
-
-	HRESULT hr = CreateDDSTextureFromMemory(_device, (uint8_t*)data, size, nullptr, &srv);
-	if (FAILED(hr))
-	{
-		return nullptr;
-	}
-	return srv;
-}
-
-ID3D11ShaderResourceView * Direct3D11::_CreateWICTexture(const void * data, size_t size)
-{
-	ID3D11ShaderResourceView* srv = nullptr;
-	HRESULT hr = CreateWICTextureFromMemory(_device, (uint8_t*)data, size, nullptr, &srv);
-	if (FAILED(hr))
-	{
-		return nullptr;
-	}
-	return srv;
-
-}
-
-void Direct3D11::_CreateDDSTexture(const std::string & filename)
-{
-	std::wstring name(filename.begin(), filename.end());
-	CreateDDSTextureFromFile(_device, name.c_str(), nullptr, &_textures[filename].srv);
-	_textures[filename].slot = _textures.size() - 1;
-}
-
 void Direct3D11::_CreateWICTexture(const std::string & filename)
 {
+	if (_textureIndices.size() == MAX_MESHTEXTURES)
+		throw std::exception("Cannot create more textures");
 	std::wstring name(filename.begin(), filename.end());
-	CreateWICTextureFromFile(_device, name.c_str(), nullptr, &_textures[filename].srv);
-	_textures[filename].slot = _textures.size() - 1;
+	uint8_t* destination = _rawTextureData + (_textureIndices.size() * TEXTURE_BYTESIZE);
+	AppendTextureData(destination, _device, name.c_str());
+
 }
 
 void Direct3D11::_Map(ID3D11Resource * resource, void * data, uint32_t stride, uint32_t count, D3D11_MAP mapType, UINT flags)
@@ -250,10 +173,13 @@ void Direct3D11::Draw()
 
 	_deviceContext->CSSetShaderResources(0, 1, &(_structuredBuffers[StructuredBuffers::SB_SPHERES]->srv));
 	_deviceContext->CSSetShaderResources(1, 1, &(_structuredBuffers[StructuredBuffers::SB_TRIANGLES]->srv));
-//	_deviceContext->CSSetShaderResources(2, 1, &(_structuredBuffers[StructuredBuffers::SB_PLANES]->srv));
-	_deviceContext->CSSetShaderResources(3, 1, &(_structuredBuffers[StructuredBuffers::SB_POINTLIGHTS]->srv));
-	_deviceContext->CSSetSamplers(0, 1, &_samplerStates[Samplers::ANISO]);
-	_deviceContext->CSSetShaderResources(2, 1, &_textures["testimage.png"].srv);
+	_deviceContext->CSSetShaderResources(2, 1, &(_structuredBuffers[StructuredBuffers::SB_POINTLIGHTS]->srv));
+	_deviceContext->CSSetShaderResources(3, 1, &(_structuredBuffers[StructuredBuffers::SB_TEXTUREOFFSETS]->srv));
+	_deviceContext->CSSetShaderResources(4, 1, &_textureArray);
+
+	_deviceContext->CSSetSamplers(0, 1, &_samplerStates[Samplers::LINEAR]);
+
+
 	_deviceContext->CSSetConstantBuffers(0, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECAMERA]));
 	_deviceContext->CSSetConstantBuffers(1, 1, &(_constantBuffers[ConstantBuffers::CB_COMPUTECONSTANTS]));
 	
@@ -273,14 +199,6 @@ void Direct3D11::Draw()
 }
 
 
-//void Direct3D11::AddTriangleList(Triangle * triangles, size_t count)
-//{
-//	if (_triangles.size() + count < MAX_TRIANGLES)
-//	{
-//		memcpy(&_triangles[_triangles.size()], triangles, sizeof(Triangle) * count);
-//	}
-//}
-
 void Direct3D11::IncreaseBounceCount()
 {
 	_computeConstants.gBounceCounts = min(10, _computeConstants.gBounceCounts + 1);
@@ -289,7 +207,7 @@ void Direct3D11::IncreaseBounceCount()
 
 void Direct3D11::DecreaseBounceCount()
 {
-	_computeConstants.gBounceCounts = max(0, _computeConstants.gBounceCounts - 1);
+	_computeConstants.gBounceCounts = min(0, _computeConstants.gBounceCounts - 1);//bouncecounts is unsigned so 0 - 1 will evaluate to 4 billion something.
 	_computeConstantsUpdated = true;
 }
 
@@ -303,9 +221,9 @@ void Direct3D11::SetPointLights(PointLight * pointlights, size_t count)
 {
 	ID3D11Resource* resource = nullptr;
 	_structuredBuffers[SB_POINTLIGHTS]->srv->GetResource(&resource);
-	_Map(resource, pointlights, _structuredBuffers[SB_POINTLIGHTS]->stride, min(_structuredBuffers[SB_POINTLIGHTS]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	_Map(resource, pointlights, _structuredBuffers[SB_POINTLIGHTS]->stride, min(_structuredBuffers[SB_POINTLIGHTS]->count, (uint32_t)count), D3D11_MAP_WRITE_DISCARD, 0);
 	SAFE_RELEASE(resource);
-	_computeConstants.gPointLightCount = min(_structuredBuffers[SB_POINTLIGHTS]->count, count);
+	_computeConstants.gPointLightCount = min(_structuredBuffers[SB_POINTLIGHTS]->count, (uint32_t)count);
 	_computeConstantsUpdated = true;
 }
 
@@ -313,9 +231,9 @@ void Direct3D11::SetTriangles(Triangle * triangles, size_t count)
 {
 	ID3D11Resource* resource = nullptr;
 	_structuredBuffers[SB_TRIANGLES]->srv->GetResource(&resource);
-	_Map(resource, triangles, _structuredBuffers[SB_TRIANGLES]->stride, min(_structuredBuffers[SB_TRIANGLES]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	_Map(resource, triangles, _structuredBuffers[SB_TRIANGLES]->stride, min(_structuredBuffers[SB_TRIANGLES]->count, (uint32_t)count), D3D11_MAP_WRITE_DISCARD, 0);
 	SAFE_RELEASE(resource);
-	_computeConstants.gTriangleCount = min(_structuredBuffers[SB_TRIANGLES]->count, count);
+	_computeConstants.gTriangleCount = min(_structuredBuffers[SB_TRIANGLES]->count, (uint32_t)count);
 	_computeConstantsUpdated = true;
 }
 
@@ -323,36 +241,43 @@ void Direct3D11::SetSpheres(Sphere * spheres, size_t count)
 {
 	ID3D11Resource* resource = nullptr;
 	_structuredBuffers[SB_SPHERES]->srv->GetResource(&resource);
-	_Map(resource, spheres, _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, count), D3D11_MAP_WRITE_DISCARD, 0);
+	_Map(resource, spheres, _structuredBuffers[SB_SPHERES]->stride, min(_structuredBuffers[SB_SPHERES]->count, (uint32_t)count), D3D11_MAP_WRITE_DISCARD, 0);
 	SAFE_RELEASE(resource);
-	_computeConstants.gSphereCount = min(_structuredBuffers[SB_SPHERES]->count, count);
+	_computeConstants.gSphereCount = (int)min(_structuredBuffers[SB_SPHERES]->count, count);
 	_computeConstantsUpdated = true;
 }
 
-void Direct3D11::SetTextures(unsigned indexStart, unsigned indexCount, const std::string & filenameDiffuse, const std::string& filenameNormal)
+void Direct3D11::PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string & filenameDiffuse, const std::string& filenameNormal)
 {
 	bool diffuse = true;
 	bool normal = true;
-	auto got = _textures.find(filenameDiffuse);
-	if (got == _textures.end())
+	auto got = _textureIndices.find(filenameDiffuse);
+	if (got == _textureIndices.end())
 	{
 		std::string fileend = filenameDiffuse.substr(filenameDiffuse.size() - 3);
 		if (fileend == "png" || fileend == "jpg")
+		{
 			_CreateWICTexture(filenameDiffuse);
-		else if (fileend == "dds")
-			_CreateDDSTexture(filenameDiffuse);
+			size_t texindex = _textureIndices.size();
+			_textureIndices[filenameDiffuse] = (unsigned)texindex;
+		}
 		else
 			diffuse = false;
 	}
 
-	auto got2 = _textures.find(filenameNormal);
-	if (got2 == _textures.end())
+	auto got2 = _textureIndices.find(filenameNormal);
+	if (got2 == _textureIndices.end())
 	{
-		std::string fileend = filenameNormal.substr(filenameNormal.size() - 3);
-		if (fileend == "png" || fileend == "jpg")
-			_CreateWICTexture(filenameNormal);
-		else if (fileend == "dds")
-			_CreateDDSTexture(filenameNormal);
+		if (filenameNormal.size() > 3)
+		{
+			std::string fileend = filenameNormal.substr(filenameNormal.size() - 3);
+			if (fileend == "png" || fileend == "jpg")
+			{
+				_CreateWICTexture(filenameNormal);
+				size_t texindex = _textureIndices.size();
+				_textureIndices[filenameNormal] = (unsigned)texindex;
+			}
+		}
 		else
 			normal = false;
 	}
@@ -362,21 +287,21 @@ void Direct3D11::SetTextures(unsigned indexStart, unsigned indexCount, const std
 	bool found = false;
 	for (auto& i : _triangleTextureOffsets)
 	{
-		if (i.begin == indexStart && i.end == indexStart + indexCount)
+		if (i.begin == indexStart && i.end == indexEnd)
 		{
 			if (diffuse)
-				i.diffuseIndex = _textures[filenameDiffuse].slot;
+				i.diffuseIndex = _textureIndices[filenameDiffuse];
 			else
 				i.diffuseIndex = -1;
 			if (normal)
-				i.normalIndex = _textures[filenameNormal].slot;
+				i.normalIndex = _textureIndices[filenameNormal];
 			else
 				i.normalIndex = -1;
 			found = true;
 			break;
 		}
 		//Check for invalid ranges, we cant have overlap
-		else if ((i.begin > indexStart && indexStart + indexCount > i.begin) || (indexStart > i.begin && indexStart < i.end) || (indexStart == i.begin && indexStart + indexCount != i.end))
+		else if ((indexStart < i.begin && indexEnd > i.begin) || (indexStart > i.begin && indexStart < i.end) || (indexStart == i.begin && indexEnd != i.end))
 		{
 			throw std::exception("Invalid range of triangles for texture. Conflicts with previous range.");
 		}
@@ -385,21 +310,79 @@ void Direct3D11::SetTextures(unsigned indexStart, unsigned indexCount, const std
 	{
 		TextureOffset to;
 		to.begin = indexStart;
-		to.end = indexStart + indexCount;
+		to.end = indexEnd;
 		if (diffuse)
-			to.diffuseIndex = _textures[filenameDiffuse].slot;
+			to.diffuseIndex = _textureIndices[filenameDiffuse];
 		else
 			to.diffuseIndex = -1;
 		if (normal)
-			to.normalIndex = _textures[filenameNormal].slot;
+			to.normalIndex = _textureIndices[filenameNormal];
 		else
 			to.normalIndex = -1;
 
 		_triangleTextureOffsets.push_back(to);
 	}
 
-	_computeConstants.gTextureCount = _triangleTextureOffsets.size();
+	_computeConstants.gTextureCount = (int)_triangleTextureOffsets.size();
 	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetTextures()
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_TEXTUREOFFSETS]->srv->GetResource(&resource);
+	_Map(resource, &_triangleTextureOffsets[0], _structuredBuffers[SB_TEXTUREOFFSETS]->stride, min(_structuredBuffers[SB_TEXTUREOFFSETS]->count, (uint32_t)_triangleTextureOffsets.size()), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+
+	HRESULT hr;
+	D3D11_TEXTURE2D_DESC desc;
+	desc.Width = TEXTURE_DIMENSION;
+	desc.Height = TEXTURE_DIMENSION;
+	desc.MipLevels = 1;
+	desc.ArraySize = (UINT)_textureIndices.size();
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA* initData = new D3D11_SUBRESOURCE_DATA[_textureIndices.size()];
+	for (int i = 0; i < _textureIndices.size(); i++)
+	{
+		initData[i].pSysMem = &_rawTextureData[i * TEXTURE_BYTESIZE];
+		initData[i].SysMemPitch = static_cast<UINT>(TEXTURE_DIMENSION * 4U);
+		initData[i].SysMemSlicePitch = static_cast<UINT>(TEXTURE_BYTESIZE);
+	}
+
+
+	ID3D11Texture2D* tex = nullptr;
+
+	hr = _device->CreateTexture2D(&desc, initData, &tex);
+	if (SUCCEEDED(hr) && tex != 0)
+	{
+		if (&_textureArray != 0)
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC SRVDesc;
+			memset(&SRVDesc, 0, sizeof(SRVDesc));
+			SRVDesc.Format = desc.Format;
+
+			SRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+			SRVDesc.Texture2DArray.ArraySize = desc.ArraySize;
+			SRVDesc.Texture2DArray.MipLevels = 1;
+			SRVDesc.Texture2DArray.MostDetailedMip = 0;
+			SRVDesc.Texture2DArray.FirstArraySlice = 0;
+
+			hr = _device->CreateShaderResourceView(tex, &SRVDesc, &_textureArray);
+			if (FAILED(hr))
+			{
+				tex->Release();
+			}
+		}
+
+	}
+	delete[] initData;
 }
 
 
@@ -417,8 +400,8 @@ void Direct3D11::_CreateSamplerState()
 	sd.MinLOD = -FLT_MAX;
 	sd.MaxLOD = FLT_MAX;
 	sd.MipLODBias = 0.0f;
-	_device->CreateSamplerState(&sd, &_samplerStates[Samplers::ANISO]);
-	_deviceContext->PSSetSamplers(0, 1, &_samplerStates[Samplers::ANISO]);
+	_device->CreateSamplerState(&sd, &_samplerStates[Samplers::LINEAR]);
+	_deviceContext->PSSetSamplers(0, 1, &_samplerStates[Samplers::LINEAR]);
 }
 
 void Direct3D11::_CreateViewPort()

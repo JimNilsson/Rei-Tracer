@@ -94,13 +94,12 @@ struct TriangleTexture
 
 StructuredBuffer<Sphere> gSpheres : register(t0);
 StructuredBuffer<Triangle> gTriangles : register(t1);
-StructuredBuffer<PointLight> gPointLights : register(t3);
+StructuredBuffer<PointLight> gPointLights : register(t2);
+StructuredBuffer<TriangleTexture> gTriangleTextureIndices : register(t3);
+Texture2DArray gMeshTextures : register(t4);
 
-StructuredBuffer<TriangleTexture> gTriangleTextureIndices : register(t4);
-Texture2DArray gMeshTextures : register(t2);
-//Texture2D gTesttex : register(t2);
 
-SamplerState gSampleAniso : register(s0);
+SamplerState gSampleLinear : register(s0);
 
 void RayVSSphere(Sphere s, Ray r, inout float t0, inout float3 normal)
 {
@@ -210,7 +209,7 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
-t0 = -1.0f;
+	t0 = -1.0f;
 	for (i = 0; i < gTriangleCount; i++)
 	{
 		RayVSTriangleDistance(gTriangles[i], r, t0);
@@ -258,38 +257,53 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 
 		float dduu = 0.0f;
 		float ddvv = 0.0f;
+		int triangleIndex = -1;
 		for (i = 0; i < gTriangleCount; i++)
 		{
+			float previous = intersectionDistance;
 			RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal);
+			if (intersectionDistance < previous)
+			{
+				triangleIndex = i;
+			}
 		}
+
+		if (intersectionDistance < 0.0f)
+			break;
 
 		intersectionPoint += r.d * intersectionDistance;
 
-		if(intersectionDistance < 0.0f)
-			break;
+		float3 texColor = float3(1.0f, 1.0f, 1.0f);
+		if (triangleIndex >= 0)
+		{
+			for (i = 0; i < gTextureCount; i++)
+			{
+				if (triangleIndex >= gTriangleTextureIndices[i].lowerIndex && triangleIndex <= gTriangleTextureIndices[i].upperIndex)
+				{
+					texColor = gMeshTextures.SampleLevel(gSampleLinear, float3(dduu, ddvv, gTriangleTextureIndices[i].diffuseIndex), 0).xyz;
+					break;
+				}
+			}
+		}
 
-		/* If we intersected a triangle, save index of triangle*/
-		//Loop through gTriangleTextureIndices
-		//Find diffuseIndex and normalIndex by checking that index >= lowerindex && index <= upperindex
-		//Sample gMeshTextures[diffuseIndex] and multiply ldiffuse with this value
 
 		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
 		float3 lspec = float3(0.0f, 0.0f, 0.0f);
-		for (int i = 0; i < gPointLightCount; i++)
+		for (i = 0; i < gPointLightCount; i++)
 		{
 			PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 		}
 
-		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1));
-		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1));
+		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
+		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
 
 		r.o = intersectionPoint;
 		r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);
 		r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 	}
 
-	float2 testsam = float2(((threadID.x - gWidth / 2.0f) / gWidth), ((threadID.y - gHeight / 2.0f) / gHeight));
-	float3 calor = gMeshTextures.SampleLevel(gSampleAniso, float3(0.5f,0.5f,1), 0).xyz;
-	output[threadID.xy] = float4(calor.xyz, 1.0f);
-	//output[threadID.xy] = saturate(float4(calor * (accumulatedDiff + accumulatedSpec), 1.0f));
+	//float2 testsam = float2(threadID.x /(1.0f * gWidth), threadID.y /(1.0f * gHeight));
+	//float3 calor = gMeshTextures.SampleLevel(gSampleLinear, float3(testsam,0), 0).xyz;
+	//output[threadID.xy] = float4(calor.xyz, 1.0f);
+	output[threadID.xy] = saturate(float4((accumulatedDiff + accumulatedSpec), 1.0f));
 }

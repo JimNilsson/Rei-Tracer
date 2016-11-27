@@ -7,6 +7,8 @@
 #define MAX_TRIANGLES 2048
 #define MAX_MESHTEXTURES 8
 #define MAX_POINTLIGHTS 10
+#define TEXTURE_DIMENSION 256U
+#define TEXTURE_BYTESIZE 256U * 256U * 4U
 
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -34,7 +36,7 @@ enum ConstantBuffers
 
 enum Samplers
 {
-	ANISO,
+	LINEAR,
 	SAM_COUNT
 };
 
@@ -64,11 +66,11 @@ struct StructuredBuffer
 
 struct ComputeConstants
 {
-	int gSphereCount = 0;
-	int gTriangleCount = 0;
-	int gPointLightCount = 0;
-	int gBounceCounts = 0;
-	int gTextureCount = 0;
+	uint32_t gSphereCount = 0;
+	uint32_t gTriangleCount = 0;
+	uint32_t gPointLightCount = 0;
+	uint32_t gBounceCounts = 0;
+	uint32_t gTextureCount = 0;
 	int pad;
 	int pad2;
 	int pad3;
@@ -105,8 +107,8 @@ struct TextureOffset
 {
 	unsigned begin;
 	unsigned end;
-	unsigned diffuseIndex;
-	unsigned normalIndex;
+	int diffuseIndex;
+	int normalIndex;
 };
 
 
@@ -136,11 +138,6 @@ private:
 
 	void _CreateStructuredBuffer(StructuredBuffer** buffer, unsigned int stride, unsigned int count, bool CPUWrite = true, bool GPUWrite = false, void* initdata = nullptr);
 
-
-	ID3D11ShaderResourceView* _CreateDDSTexture(const void* data, size_t size);
-	ID3D11ShaderResourceView* _CreateWICTexture(const void* data, size_t size);
-
-	void _CreateDDSTexture(const std::string& filename);
 	void _CreateWICTexture(const std::string& filename);
 	
 	void _Map(ID3D11Resource* resource, void* data, uint32_t stride, uint32_t count, D3D11_MAP mapType, UINT flags);
@@ -149,13 +146,12 @@ private:
 	std::vector<Plane> _planes;
 	std::vector<Triangle> _triangles;
 	std::vector<TextureOffset> _triangleTextureOffsets;
-	struct TextureWrapper
-	{
-		ID3D11ShaderResourceView* srv = nullptr;
-		unsigned slot;
-	};
-	std::unordered_map<std::string, TextureWrapper> _textures;
+
+
 	unsigned _bounceCount = 0;
+
+	std::unordered_map<std::string, unsigned> _textureIndices;
+	ID3D11ShaderResourceView* _textureArray = nullptr;
 
 	bool _computeConstantsUpdated = false;
 	ComputeConstants _computeConstants;
@@ -181,7 +177,8 @@ public:
 	virtual void SetPointLights(PointLight* pointlights, size_t count);
 	virtual void SetTriangles(Triangle* triangles, size_t count);
 	virtual void SetSpheres(Sphere* spheres, size_t count);
-	virtual void SetTextures(unsigned indexStart, unsigned indexCount, const std::string& filenameDiffuse, const std::string& filenameNormal );
+	virtual void PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string& filenameDiffuse, const std::string& filenameNormal );
+	virtual void SetTextures();
 
 	
 };

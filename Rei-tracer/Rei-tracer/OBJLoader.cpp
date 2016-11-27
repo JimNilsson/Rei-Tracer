@@ -170,6 +170,6 @@ unsigned OBJLoader::LoadOBJ(const std::string & filename, Triangle * triangleArr
 		triangleArray[i / 3].v3 = TriangleVertex(realPos[i + 2], realNor[i + 2], realTan[i + 2], realTex[i + 2]);
 	}
 
-	return nrOfVertices / 3;
+	return (unsigned)nrOfVertices / 3;
 
 }

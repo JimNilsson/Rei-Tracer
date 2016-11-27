@@ -1,8 +1,11 @@
 #include "Core.h"
 #include <sstream>
 #include "OBJLoader.h"
+#include <crtdbg.h>
+
 int main(int argc, char** argv)
 {
+	_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF | _CRTDBG_ALLOC_MEM_DF);
 
 	Core::CreateInstance();
 	Core* core = Core::GetInstance();
@@ -89,8 +92,16 @@ int main(int argc, char** argv)
 		TriangleVertex(100, 100, 0, 1,
 			0, 0, -1, 0,
 			-1, 0, 0, 0));
-	unsigned trianglesAdded = objLoader.LoadOBJ("twopura.obj", &triangles[6], MAX_TRIANGLES - 6);
-	graphics->SetTriangles(triangles, 6 + trianglesAdded);
+	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
+	unsigned tadd2 = objLoader.LoadOBJ("cube2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
+	
+
+	graphics->PrepareTextures(6, 6 + trianglesAdded, "rei.jpg", "");
+	graphics->PrepareTextures(6 + trianglesAdded + 1, 6 + trianglesAdded + tadd2, "rei2.jpg", "");
+	graphics->SetTextures();
+
+	
 
 	PointLight pointlights[10];
 	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.13f, 0.0f, 1.0f, 0.7f, 15.0f);

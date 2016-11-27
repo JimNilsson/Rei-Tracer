@@ -116,15 +116,7 @@ namespace DirectX
 	
 	HRESULT __cdecl AppendTextureData(void* destination,
 		ID3D11Device* d3dDevice,
-		const wchar_t* fileName,
-		size_t maxsize,
-		D3D11_USAGE usage,
-		unsigned int bindFlags,
-		unsigned int cpuAccessFlags,
-		unsigned int miscFlags,
-		bool forceSRGB,
-		ID3D11Resource** texture,
-		ID3D11ShaderResourceView** textureView);
+		const wchar_t* fileName);
 
     // Extended version with optional auto-gen mipmap support
     #if defined(_XBOX_ONE) && defined(_TITLE)
