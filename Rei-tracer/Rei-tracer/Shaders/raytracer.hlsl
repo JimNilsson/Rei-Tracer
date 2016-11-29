@@ -92,6 +92,8 @@ struct TriangleTexture
 	int normalIndex;
 };
 
+
+
 StructuredBuffer<Sphere> gSpheres : register(t0);
 StructuredBuffer<Triangle> gTriangles : register(t1);
 StructuredBuffer<PointLight> gPointLights : register(t2);
@@ -159,7 +161,7 @@ void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout flo
 		dist = ttt;
 		u = bu * t.v2.u + bv * t.v3.u + (1.0f - bv - bu) * t.v1.u;
 		v = bu * t.v2.v + bv * t.v3.v + (1.0f - bv - bu) * t.v1.v;
-		normal = bu * t.v2.normal + bv * t.v3.normal + (1.0f - bv - bu) * t.v1.normal;
+		normal = normalize(bu * t.v2.normal + bv * t.v3.normal + (1.0f - bv - bu) * t.v1.normal);
 	}
 }
 
@@ -184,6 +186,40 @@ void RayVSTriangleDistance(Triangle t, Ray r, out float dist)
 		return;
 	dist = f * dot(e2, rr);
 }
+struct CircularLight
+{
+	float3 color;
+	float range;
+	float3 normal;
+	float intensity;
+	float3 position;
+	float radius;
+
+};
+
+void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, CircularLight clight, inout float3 specular, inout float3 diffuse)
+{
+	float3 toLight = clight.position - origin;
+	float dist = length(toLight);
+	toLight /= dist;
+	float NdL = dot(toLight, normal);
+	if(NdL < 0.0f)
+		return;
+
+	float3 projected = -toLight - ((dot(-toLight, clight.normal)/dot(clight.normal,clight.normal)) * clight.normal);
+	float projDist = length(projected);
+	float value = clight.radius / projDist;
+	
+	float3 toEdge = normalize(clight.position + projected - origin);
+
+	float divby = ((dist / clight.range) + 1.0f) / (/*dot(toLight, toEdge) * */value);
+
+	float attenuation = clight.intensity / (divby * divby);
+	diffuse += saturate(clight.color * NdL * attenuation);
+	specular.r += 0.000001f;//blabla
+
+}
+
 
 void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
 {
@@ -285,6 +321,13 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 				}
 			}
 		}
+		CircularLight clight;
+		clight.position = float3(10.0f, 10.0f, -10.0f);
+		clight.normal = float3(0.0f,0.0f,-1.0f);
+		clight.intensity = 1.0f;
+		clight.range = 5.0f;
+		clight.color = float3(1.0f,1.0f,1.0f);
+		clight.radius = 0.55f;
 
 
 		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
@@ -293,6 +336,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		{
 			PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 		}
+		CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
 
 		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
 		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;

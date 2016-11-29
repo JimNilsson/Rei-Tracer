@@ -69,7 +69,7 @@ struct ComputeConstants
 	uint32_t gSphereCount = 0;
 	uint32_t gTriangleCount = 0;
 	uint32_t gPointLightCount = 0;
-	uint32_t gBounceCounts = 0;
+	int32_t gBounceCounts = 0;
 	uint32_t gTextureCount = 0;
 	int pad;
 	int pad2;

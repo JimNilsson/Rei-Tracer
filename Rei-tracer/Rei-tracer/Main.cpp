@@ -97,8 +97,8 @@ int main(int argc, char** argv)
 	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
 	
 
-	graphics->PrepareTextures(6, 6 + trianglesAdded, "rei.jpg", "");
-	graphics->PrepareTextures(6 + trianglesAdded + 1, 6 + trianglesAdded + tadd2, "rei2.jpg", "");
+	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "testimage.png", "");
+	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "testimage2.png", "");
 	graphics->SetTextures();
 
 	
@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 	pointlights[1] = PointLight(10.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
 	pointlights[2] = PointLight(12.0f, 7.0f, -15.0f, 0.63f, 0.8f, 0.8f, 0.2f, 15.0f);
 	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
-	graphics->SetPointLights(pointlights, 4);
+	//graphics->SetPointLights(pointlights, 4);
 	graphics->SetBounceCount(0);
 
 	float dt = 0.0f;

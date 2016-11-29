@@ -207,7 +207,7 @@ void Direct3D11::IncreaseBounceCount()
 
 void Direct3D11::DecreaseBounceCount()
 {
-	_computeConstants.gBounceCounts = min(0, _computeConstants.gBounceCounts - 1);//bouncecounts is unsigned so 0 - 1 will evaluate to 4 billion something.
+	_computeConstants.gBounceCounts = max(0, _computeConstants.gBounceCounts - 1);//bouncecounts is unsigned so 0 - 1 will evaluate to 4 billion something.
 	_computeConstantsUpdated = true;
 }
 
