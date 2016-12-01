@@ -200,22 +200,23 @@ struct CircularLight
 void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, CircularLight clight, inout float3 specular, inout float3 diffuse)
 {
 	float3 toLight = clight.position - origin;
-	float dist = length(toLight);
-	toLight /= dist;
-	float NdL = dot(toLight, normal);
-	if(NdL < 0.0f)
-		return;
 
 	float3 projected = -toLight - ((dot(-toLight, clight.normal)/dot(clight.normal,clight.normal)) * clight.normal);
 	float projDist = length(projected);
-	float value = clight.radius / projDist;
+	projected /= projDist;
 	
-	float3 toEdge = normalize(clight.position + projected - origin);
+	float3 onCircle = clight.position + projected * min(clight.radius, projDist);
+	float3 circleToPos = origin - onCircle;
+	float dist = length(circleToPos);
+	circleToPos /= dist;
 
-	float divby = ((dist / clight.range) + 1.0f) / (/*dot(toLight, toEdge) * */value);
+	float NdL = dot(circleToPos, clight.normal);
+	if (NdL < 0.0f)
+		return;
+	float divby = (dist / clight.range) + 1.0f;
 
-	float attenuation = clight.intensity / (divby * divby);
-	diffuse += saturate(clight.color * NdL * attenuation);
+	float attenuation = pow(NdL,8.0f) * clight.intensity / (divby * divby);
+	diffuse += saturate(clight.color * attenuation);
 	specular.r += 0.000001f;//blabla
 
 }
@@ -254,11 +255,11 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 	}
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
-	diffuse += saturate(NdL * pointlight.color * attenuation);
+	diffuse += NdL * pointlight.color * attenuation;
 	float3 halfVector = normalize(toLight + normalize(rayOrigin - origin));
-	float NdH = saturate(dot(normal, halfVector));
+	float NdH = dot(normal, halfVector);
 	if(NdH > 0.0f)
-		specular += saturate(pointlight.color * pow(NdH, 6.0f) * attenuation);
+		specular += pointlight.color * pow(NdH, 6.0f) * attenuation;
 	
 }
 
@@ -271,81 +272,118 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		return;
 
 	float3 rayPos = gCamPos + gCamDir * gCamFar;
-	rayPos += gCamRight * ((threadID.x - gWidth / 2.0f) / gWidth) * (gCamFar / tan(gFOV / 2.0f));
-	rayPos += -gCamUp * ((threadID.y - gHeight / 2.0f) / gHeight) * (gCamFar / gAspectRatio);
+	float nx = (threadID.x - gWidth / 2.0f) / gWidth;
+	float ny = (threadID.y - gHeight / 2.0f) / gHeight;
+
+	float dx = 1.0f / gWidth;
+	float dy = 1.0f / gHeight;
+
+
+
+	float3 fovCorrection = (gCamFar / tan(gFOV / 2.0f)) * gCamRight;
+	float3 aspectCorrection = (gCamFar / gAspectRatio) * -gCamUp;
+	float3 farplanePositions[9];
+
+	farplanePositions[0] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper left
+	farplanePositions[1] = rayPos + (nx - 0.0f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper middle
+	farplanePositions[2] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper right
+	farplanePositions[3] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle left
+	farplanePositions[4] = rayPos + (nx + 0.0f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle
+	farplanePositions[5] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle right
+	farplanePositions[6] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower left
+	farplanePositions[7] = rayPos + (nx - 0.0f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower middle
+	farplanePositions[8] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower right
+	
+	float3 rayDirections[9];
+	[unroll]
+	for (int k = 0; k < 9; k++)
+	{
+		rayDirections[k] = normalize(farplanePositions[k] - gCamPos);
+	}
+
+	/*rayPos += nx * fovCorrection;
+	rayPos += ny * aspectCorrection;*/
 
 	Ray r;
 	r.o = gCamPos;
-	r.d = normalize(rayPos - gCamPos);
+	//r.d = normalize(rayPos - gCamPos);
 
 	
 	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
 	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
-	for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
+
+	for (int samples = 0; samples < 9; samples++)
 	{
-		float3 intersectionNormal = r.d;
-		float3 intersectionPoint = r.o;
-		float intersectionDistance = -1.0f;
-		for (int i = 0; i < gSphereCount; i++)
+		r.d = rayDirections[samples];
+		r.o = gCamPos;
+		for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
 		{
-			RayVSSphere(gSpheres[i], r, intersectionDistance, intersectionNormal);
-		}
-
-		float dduu = 0.0f;
-		float ddvv = 0.0f;
-		int triangleIndex = -1;
-		for (i = 0; i < gTriangleCount; i++)
-		{
-			float previous = intersectionDistance;
-			RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal);
-			if (intersectionDistance < previous)
+			float3 intersectionNormal = r.d;
+			float3 intersectionPoint = r.o;
+			float intersectionDistance = -1.0f;
+			for (int i = 0; i < gSphereCount; i++)
 			{
-				triangleIndex = i;
+				RayVSSphere(gSpheres[i], r, intersectionDistance, intersectionNormal);
 			}
-		}
 
-		if (intersectionDistance < 0.0f)
-			break;
-
-		intersectionPoint += r.d * intersectionDistance;
-
-		float3 texColor = float3(1.0f, 1.0f, 1.0f);
-		if (triangleIndex >= 0)
-		{
-			for (i = 0; i < gTextureCount; i++)
+			float dduu = 0.0f;
+			float ddvv = 0.0f;
+			int triangleIndex = -1;
+			for (i = 0; i < gTriangleCount; i++)
 			{
-				if (triangleIndex >= gTriangleTextureIndices[i].lowerIndex && triangleIndex <= gTriangleTextureIndices[i].upperIndex)
+				float previous = intersectionDistance;
+				RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal);
+				if (intersectionDistance < previous)
 				{
-					texColor = gMeshTextures.SampleLevel(gSampleLinear, float3(dduu, ddvv, gTriangleTextureIndices[i].diffuseIndex), 0).xyz;
-					break;
+					triangleIndex = i;
 				}
 			}
+
+			if (intersectionDistance < 0.0f)
+				break;
+
+			intersectionPoint += r.d * intersectionDistance;
+
+			float3 texColor = float3(1.0f, 1.0f, 1.0f);
+			if (triangleIndex >= 0)
+			{
+				for (i = 0; i < gTextureCount; i++)
+				{
+					if (triangleIndex >= gTriangleTextureIndices[i].lowerIndex && triangleIndex <= gTriangleTextureIndices[i].upperIndex)
+					{
+						texColor = gMeshTextures.SampleLevel(gSampleLinear, float3(dduu, ddvv, gTriangleTextureIndices[i].diffuseIndex), 0).xyz;
+						break;
+					}
+				}
+			}
+			CircularLight clight;
+			clight.position = float3(10.0f, 5.0f, -10.0f);
+			clight.normal = float3(0.0f, -1.0f, 0.0f);
+			clight.intensity = 3.0f;
+			clight.range = 15.0f;
+			clight.color = float3(0.0f, 0.80f, 0.40f);
+			clight.radius = 0.15f;
+
+
+			float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
+			float3 lspec = float3(0.0f, 0.0f, 0.0f);
+			for (i = 0; i < gPointLightCount; i++)
+			{
+				PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
+			}
+			CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
+
+			accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
+			accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
+
+			r.o = intersectionPoint;
+			r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);
+			r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 		}
-		CircularLight clight;
-		clight.position = float3(10.0f, 10.0f, -10.0f);
-		clight.normal = float3(0.0f,0.0f,-1.0f);
-		clight.intensity = 1.0f;
-		clight.range = 5.0f;
-		clight.color = float3(1.0f,1.0f,1.0f);
-		clight.radius = 0.55f;
-
-
-		float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
-		float3 lspec = float3(0.0f, 0.0f, 0.0f);
-		for (i = 0; i < gPointLightCount; i++)
-		{
-			PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
-		}
-		CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
-
-		accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
-		accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
-
-		r.o = intersectionPoint;
-		r.d = normalize(r.d - 2.0f * dot(r.d, intersectionNormal) * intersectionNormal);
-		r.o += r.d * 0.0001f; //Get rid of pesky floating point rounding errors :^)
 	}
 
+	accumulatedDiff /= 9.0f;
+	accumulatedSpec /= 9.0f;
 	//float2 testsam = float2(threadID.x /(1.0f * gWidth), threadID.y /(1.0f * gHeight));
 	//float3 calor = gMeshTextures.SampleLevel(gSampleLinear, float3(testsam,0), 0).xyz;
 	//output[threadID.xy] = float4(calor.xyz, 1.0f);
