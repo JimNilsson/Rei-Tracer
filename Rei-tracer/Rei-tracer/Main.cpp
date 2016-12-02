@@ -33,10 +33,10 @@ int main(int argc, char** argv)
 	triangles[0] = Triangle(TriangleVertex(0, 0, 0, 0,
 		0, 1, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(100, 0, 0, 1,
+		TriangleVertex(40, 0, 0, 2,
 			0, 1, 0, 0,
-			1, 0, 0, 0),
-		TriangleVertex(0, 0, -100, 0,
+			1, 0, 0, 1),
+		TriangleVertex(0, 0, -40, 0,
 			0, 1, 0, 1,
 			1, 0, 0, 0));
 
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 	unsigned tadd2 = objLoader.LoadOBJ("cube2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
 	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
 	
-
+	graphics->PrepareTextures(0, 0, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "rei2.jpg", "");
 	graphics->SetTextures();

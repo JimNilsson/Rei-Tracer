@@ -324,7 +324,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			float3 intersectionNormal = r.d;
 			float3 intersectionPoint = r.o;
 			float4 intersectionTangent;
-			float intersectionDistance = -1.0f;
+			float intersectionDistance = 9999.0f;
 			for (int i = 0; i < gSphereCount; i++)
 			{
 				RayVSSphere(gSpheres[i], r, intersectionDistance, intersectionNormal);
@@ -362,9 +362,9 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 							sampledNormal = sampledNormal * 2.0f - 1.0f;
 							float3 bitan = intersectionTangent.w * cross(intersectionNormal, intersectionTangent.xyz);
 							float3x3 tbn;
-							tbn[0] = intersectionTangent.xyz;
+							tbn[2] = intersectionTangent.xyz;
 							tbn[1] = bitan;
-							tbn[2] = intersectionNormal;
+							tbn[0] = intersectionNormal;
 							intersectionNormal = normalize(mul(sampledNormal, tbn));
 						}
 						break;
