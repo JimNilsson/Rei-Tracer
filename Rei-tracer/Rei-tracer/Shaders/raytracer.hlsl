@@ -137,7 +137,7 @@ void RayVSSphereDistance(Sphere s, Ray r, out float t0)
 	t0 = tca - thc;
 }
 
-void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout float v, out float3 normal)
+void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout float v, out float3 normal, out float4 tangent)
 {
 
 	float3 e1 = t.v2.position - t.v1.position;
@@ -162,6 +162,7 @@ void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout flo
 		u = bu * t.v2.u + bv * t.v3.u + (1.0f - bv - bu) * t.v1.u;
 		v = bu * t.v2.v + bv * t.v3.v + (1.0f - bv - bu) * t.v1.v;
 		normal = normalize(bu * t.v2.normal + bv * t.v3.normal + (1.0f - bv - bu) * t.v1.normal);
+		tangent = normalize(bu * t.v2.tangent + bv * t.v3.tangent + (1.0f - bv - bu) * t.v1.tangent);
 	}
 }
 
@@ -210,12 +211,12 @@ void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, C
 	float dist = length(circleToPos);
 	circleToPos /= dist;
 
-	float NdL = dot(circleToPos, clight.normal);
+	float NdL = dot(-normal, clight.normal) * dot(circleToPos, clight.normal);
 	if (NdL < 0.0f)
 		return;
 	float divby = (dist / clight.range) + 1.0f;
 
-	float attenuation = pow(NdL,8.0f) * clight.intensity / (divby * divby);
+	float attenuation = pow(NdL,7.0f) * clight.intensity / (divby * divby);
 	diffuse += saturate(clight.color * attenuation);
 	specular.r += 0.000001f;//blabla
 
@@ -235,11 +236,13 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 	if (NdL < 0.0f)
 		return; //No contribution at all, return
 	//Check for occlusion (shadows)
-	float t0;
+
 	Ray r;
 	r.o = origin;
 	r.d = toLight;
 	r.o += 0.0001f * r.d;
+
+	float t0;
 	for (int i = 0; i < gSphereCount; i++)
 	{
 		RayVSSphereDistance(gSpheres[i], r, t0);
@@ -312,7 +315,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
 	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
 
-	for (int samples = 0; samples < 9; samples++)
+	for (int samples = 0; samples < 1; samples++)
 	{
 		r.d = rayDirections[samples];
 		r.o = gCamPos;
@@ -320,6 +323,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		{
 			float3 intersectionNormal = r.d;
 			float3 intersectionPoint = r.o;
+			float4 intersectionTangent;
 			float intersectionDistance = -1.0f;
 			for (int i = 0; i < gSphereCount; i++)
 			{
@@ -332,7 +336,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			for (i = 0; i < gTriangleCount; i++)
 			{
 				float previous = intersectionDistance;
-				RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal);
+				RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal, intersectionTangent);
 				if (intersectionDistance < previous)
 				{
 					triangleIndex = i;
@@ -352,17 +356,28 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 					if (triangleIndex >= gTriangleTextureIndices[i].lowerIndex && triangleIndex <= gTriangleTextureIndices[i].upperIndex)
 					{
 						texColor = gMeshTextures.SampleLevel(gSampleLinear, float3(dduu, ddvv, gTriangleTextureIndices[i].diffuseIndex), 0).xyz;
+						if (gTriangleTextureIndices[i].normalIndex >= 0)
+						{
+							float3 sampledNormal = gMeshTextures.SampleLevel(gSampleLinear, float3(dduu, ddvv, gTriangleTextureIndices[i].normalIndex), 0).xyz;
+							sampledNormal = sampledNormal * 2.0f - 1.0f;
+							float3 bitan = intersectionTangent.w * cross(intersectionNormal, intersectionTangent.xyz);
+							float3x3 tbn;
+							tbn[0] = intersectionTangent.xyz;
+							tbn[1] = bitan;
+							tbn[2] = intersectionNormal;
+							intersectionNormal = normalize(mul(sampledNormal, tbn));
+						}
 						break;
 					}
 				}
 			}
-			CircularLight clight;
-			clight.position = float3(10.0f, 5.0f, -10.0f);
-			clight.normal = float3(0.0f, -1.0f, 0.0f);
-			clight.intensity = 3.0f;
-			clight.range = 15.0f;
-			clight.color = float3(0.0f, 0.80f, 0.40f);
-			clight.radius = 0.15f;
+			//CircularLight clight;
+			//clight.position = float3(15.0f, 15.0f, -10.0f);
+			//clight.normal = float3(0.0f, -1.0f, 0.0f);
+			//clight.intensity = 3.0f;
+			//clight.range = 15.0f;
+			//clight.color = float3(0.5f, 0.80f, 0.10f);
+			//clight.radius = 0.15f;
 
 
 			float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
@@ -371,7 +386,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			{
 				PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
 			}
-			CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
+			//CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
 
 			accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
 			accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
@@ -382,10 +397,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		}
 	}
 
-	accumulatedDiff /= 9.0f;
-	accumulatedSpec /= 9.0f;
-	//float2 testsam = float2(threadID.x /(1.0f * gWidth), threadID.y /(1.0f * gHeight));
-	//float3 calor = gMeshTextures.SampleLevel(gSampleLinear, float3(testsam,0), 0).xyz;
-	//output[threadID.xy] = float4(calor.xyz, 1.0f);
+	accumulatedDiff /= 1.0f;
+	accumulatedSpec /= 1.0f;
 	output[threadID.xy] = saturate(float4((accumulatedDiff + accumulatedSpec), 1.0f));
 }

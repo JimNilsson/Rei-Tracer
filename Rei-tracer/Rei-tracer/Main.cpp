@@ -9,7 +9,7 @@ int main(int argc, char** argv)
 
 	Core::CreateInstance();
 	Core* core = Core::GetInstance();
-	core->Init(800, 640, false);
+	core->Init(400, 400, false);
 	InputManager* input = core->GetInputManager();
 	IGraphics* graphics = core->GetGraphics();
 	CameraManager* cam = core->GetCameraManager();
@@ -97,7 +97,7 @@ int main(int argc, char** argv)
 	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
 	
 
-	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "rei.jpg", "");
+	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "rei2.jpg", "");
 	graphics->SetTextures();
 
@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 	PointLight pointlights[10];
 	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.13f, 0.0f, 1.0f, 0.7f, 15.0f);
 	pointlights[1] = PointLight(10.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
-	pointlights[2] = PointLight(12.0f, 7.0f, -15.0f, 0.63f, 0.8f, 0.8f, 0.2f, 15.0f);
+	pointlights[2] = PointLight(13.0f, 5.0f, -10.0f, 0.63f, 0.8f, 0.8f, 0.8f, 15.0f);
 	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
 	graphics->SetPointLights(pointlights, 4);
 	graphics->SetBounceCount(0);
