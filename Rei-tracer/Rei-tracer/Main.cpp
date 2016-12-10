@@ -20,95 +20,103 @@ int main(int argc, char** argv)
 	cam->CycleActiveCamera();
 
 	Sphere spheres[5];
-	spheres[0] = Sphere(4.0f, 10.0f, -5.0f, 1.0f);
-	spheres[1] = Sphere(10.0f, 4.0f, -15.0f, 1.0f);
-	spheres[2] = Sphere(15.0f, 8.0f, -5.0f, 1.0f);
-	spheres[3] = Sphere(17.0f, 4.0f, -10.0f, 1.0f);
-	spheres[4] = Sphere(5.0f, 5.0f, -5.0f, 1.0f);
+	spheres[0] = Sphere(-6.0f, 0.0f, -5.0f, 1.0f);
+	spheres[1] = Sphere(0.0f, 4.0f, -5.0f, 1.0f);
+	spheres[2] = Sphere(5.0f, -8.0f, -2.5f, 1.0f);
+	spheres[3] = Sphere(8.0f, -6.0f, -3.0f, 0.3f);
+	spheres[4] = Sphere(-5.0f, 5.0f, -5.0f, 1.0f);
 	graphics->SetSpheres(spheres, 5);
 
 	OBJLoader objLoader;
-
+#pragma region
 	Triangle triangles[MAX_TRIANGLES];
-	triangles[0] = Triangle(TriangleVertex(0, 0, 0, 0,
+	//Floor
+	triangles[0] = Triangle(TriangleVertex(-10, -10, 10, 0,
 		0, 1, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(40, 0, 0, 2,
+		TriangleVertex(40, -10, 10, 2,
 			0, 1, 0, 0,
 			1, 0, 0, 1),
-		TriangleVertex(0, 0, -40, 0,
+		TriangleVertex(-10, -10, -40, 0,
 			0, 1, 0, 1,
 			1, 0, 0, 0));
-
-	triangles[1] = Triangle(TriangleVertex(0, 20, 0, 0,
+	//Roof
+	triangles[1] = Triangle(TriangleVertex(-10, 10, 10, 0,
 		0, -1, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(0, 20, -100, 0,
+		TriangleVertex(-10, 10, -100, 0,
 			0, -1, 0, 1,
 			1, 0, 0, 0),
-		TriangleVertex(100, 20, 0, 1,
+		TriangleVertex(100, 10, 10, 1,
 			0, -1, 0, 0,
 			1, 0, 0, 0));
-
-	triangles[2] = Triangle(TriangleVertex(0, 0, 0, 0,
+	//right wall
+	triangles[2] = Triangle(TriangleVertex(-10, -10, 10, 0,
 		1, 0, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(0, 0, -100, 1,
+		TriangleVertex(-10, -10, -100, 1,
 			1, 0, 0, 0,
 			0, 1, 0, 0),
-		TriangleVertex(0, 100, 0, 0,
+		TriangleVertex(-10, 100, 10, 0,
 			1, 0, 0, 1,
 			0, 1, 0, 0));
-
-	triangles[3] = Triangle(TriangleVertex(20, 0, 0, 0,
+	//left wall
+	triangles[3] = Triangle(TriangleVertex(10, -10, 10, 0,
 		-1, 0, 0, 0,
 		1, 0, 0, 0),
-		TriangleVertex(20, 100, 0, 0,
+		TriangleVertex(10, 100, 10, 0,
 			-1, 0, 0, 1,
 			0, 1, 0, 0),
-		TriangleVertex(20, 0, -100, 1,
+		TriangleVertex(10, -10, -100, 1,
 			-1, 0, 0, 0,
 			0, 1, 0, 0)
 		);
-
+	//back wall
 	triangles[4] = Triangle(
-		TriangleVertex(-50, 0, -20, 0,
-		0, 0, 1, 0,
-		1, 0, 0, 0),
-		TriangleVertex(100, 0, -20, 1,
+		TriangleVertex(-50, -10, -10, 0,
+			0, 0, 1, 0,
+			1, 0, 0, 0),
+		TriangleVertex(100, -10, -10, 1,
 			0, 0, 1, 0,
 			0, 1, 0, 0),
-		TriangleVertex(100, 100, -20, 0,
+		TriangleVertex(100, 100, -10, 0,
 			0, 0, 1, 1,
 			0, 1, 0, 0));
-
+	//Front wall
 	triangles[5] = Triangle(
-		TriangleVertex(100, 0, 0, 0,
+		TriangleVertex(100, -10, 10, 0,
 			0, 0, -1, 0,
 			-1, 0, 0, 0),
-		TriangleVertex(-100, 0, 0, 0,
+		TriangleVertex(-100, -10, 10, 0,
 			0, 0, -1, 1,
 			-1, 0, 0, 0),
-		TriangleVertex(100, 100, 0, 1,
+		TriangleVertex(100, 100, 10, 1,
 			0, 0, -1, 0,
 			-1, 0, 0, 0));
+#pragma endregion
 	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
-	unsigned tadd2 = objLoader.LoadOBJ("cube2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
 	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
-	
+
 	graphics->PrepareTextures(0, 0, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "ft_stone01_c.png", "ft_stone01_n.png");
-	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "rei2.jpg", "");
+	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "lunarrock_s.png", "lunarrock_n.png");
 	graphics->SetTextures();
 
-	
+
 
 	PointLight pointlights[10];
-	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.13f, 0.0f, 1.0f, 0.7f, 15.0f);
-	pointlights[1] = PointLight(10.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
-	pointlights[2] = PointLight(13.0f, 5.0f, -10.0f, 0.63f, 0.8f, 0.8f, 0.8f, 15.0f);
-	pointlights[3] = PointLight(5.0f, 10.0f, -18.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
+	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.63f, 0.0f, 1.0f, 0.7f, 15.0f);
+	pointlights[1] = PointLight(5.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
+	pointlights[2] = PointLight(3.0f, 5.0f, 0.0f, 0.63f, 0.8f, 0.8f, 0.8f, 15.0f);
+	pointlights[3] = PointLight(5.0f, 5.0f, -8.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
 	graphics->SetPointLights(pointlights, 4);
+
+	SpotLight spotlights[10];
+	spotlights[0] = SpotLight(-2.0f, 0.0f, 2.0f, 0.70f,
+		1.0f, 1.0f, 1.0f, 20.0f,
+		0.7071f, 0.0f, -0.7071f, 9.0f);
+	graphics->SetSpotLights(spotlights, 1);
 	graphics->SetBounceCount(0);
 
 	float dt = 0.0f;

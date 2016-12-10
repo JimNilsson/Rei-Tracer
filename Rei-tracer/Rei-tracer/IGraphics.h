@@ -14,6 +14,7 @@ public:
 	virtual void SetTriangles(Triangle* triangles, size_t count) = 0;
 	virtual void SetSpheres(Sphere* spheres, size_t count) = 0;
 	virtual void SetPointLights(PointLight* pointlights, size_t count) = 0;
+	virtual void SetSpotLights(SpotLight* spotlights, size_t count) = 0;
 	virtual void PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string& filenameDiffuse, const std::string& filenameNormal) = 0;
 	virtual void SetTextures() = 0;
 	virtual void Draw() = 0;

@@ -54,8 +54,11 @@ Direct3D11::Direct3D11()
 	_triangles.reserve(MAX_TRIANGLES);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_PLANES], sizeof(Plane), 10);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_POINTLIGHTS], sizeof(PointLight), MAX_POINTLIGHTS);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_SPOTLIGHTS], sizeof(SpotLight), MAX_SPOTLIGHTS);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_TEXTUREOFFSETS], sizeof(TextureOffset), MAX_MESHTEXTURES);
 	
+
+	_rawTextureData = new uint8_t[256U * 256U * 4U * MAX_MESHTEXTURES * 2U];
 	//Triangle ray test
 	//XMVECTOR v1 = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
 	//XMVECTOR v2 = XMVectorSet(0.0f, 1.0f, 0.0f, 1.0f);
@@ -74,7 +77,7 @@ Direct3D11::Direct3D11()
 	//float v = f * XMVectorGetX(XMVector3Dot(d, r));
 	//float distance = f * XMVectorGetX(XMVector3Dot(e2, r));
 	//int ddd = 5;
-	_rawTextureData = new uint8_t[256U * 256U * 4U * MAX_MESHTEXTURES * 2U];
+	
 	//HRESULT testerr = AppendTextureData(_rawTextureData, _device, L"testimage.png");
 	//testerr = AppendTextureData(&_rawTextureData[256U*256U*4U], _device, L"rei.jpg");
 	//CreateWICTextureFromFile(_device, L"testimage.png", nullptr, &_textures["testimage.png"].srv);
@@ -176,6 +179,7 @@ void Direct3D11::Draw()
 	_deviceContext->CSSetShaderResources(2, 1, &(_structuredBuffers[StructuredBuffers::SB_POINTLIGHTS]->srv));
 	_deviceContext->CSSetShaderResources(3, 1, &(_structuredBuffers[StructuredBuffers::SB_TEXTUREOFFSETS]->srv));
 	_deviceContext->CSSetShaderResources(4, 1, &_textureArray);
+	_deviceContext->CSSetShaderResources(5, 1, &(_structuredBuffers[StructuredBuffers::SB_SPOTLIGHTS]->srv));
 
 	_deviceContext->CSSetSamplers(0, 1, &_samplerStates[Samplers::LINEAR]);
 
@@ -224,6 +228,16 @@ void Direct3D11::SetPointLights(PointLight * pointlights, size_t count)
 	_Map(resource, pointlights, _structuredBuffers[SB_POINTLIGHTS]->stride, min(_structuredBuffers[SB_POINTLIGHTS]->count, (uint32_t)count), D3D11_MAP_WRITE_DISCARD, 0);
 	SAFE_RELEASE(resource);
 	_computeConstants.gPointLightCount = min(_structuredBuffers[SB_POINTLIGHTS]->count, (uint32_t)count);
+	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetSpotLights(SpotLight * spotlights, size_t count)
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_SPOTLIGHTS]->srv->GetResource(&resource);
+	_Map(resource, spotlights, _structuredBuffers[SB_SPOTLIGHTS]->stride, min(_structuredBuffers[SB_SPOTLIGHTS]->count, (uint32_t)count), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gSpotLightCount = min(_structuredBuffers[SB_SPOTLIGHTS]->count, (uint32_t)count);
 	_computeConstantsUpdated = true;
 }
 

@@ -38,7 +38,7 @@ cbuffer Counts : register(b1)
 	int gPointLightCount;
 	int gBounceCount;
 	int gTextureCount;
-	int padder1;
+	int gSpotLightCount;
 	int padder2;
 	int padder3;
 };
@@ -84,6 +84,16 @@ struct PointLight
 	float range;
 };
 
+struct SpotLight
+{
+	float3 position;
+	float intensity;
+	float3 color;
+	float range;
+	float3 dir;
+	float cone;
+};
+
 struct TriangleTexture
 {
 	uint lowerIndex;
@@ -99,6 +109,7 @@ StructuredBuffer<Triangle> gTriangles : register(t1);
 StructuredBuffer<PointLight> gPointLights : register(t2);
 StructuredBuffer<TriangleTexture> gTriangleTextureIndices : register(t3);
 Texture2DArray gMeshTextures : register(t4);
+StructuredBuffer<SpotLight> gSpotLights : register(t5);
 
 
 SamplerState gSampleLinear : register(s0);
@@ -222,6 +233,47 @@ void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, C
 
 }
 
+void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotLight spotlight, inout float3 specular, inout float3 diffuse)
+{
+	float3 toLight = spotlight.position - origin;
+	float dist = length(toLight);
+	toLight /= dist;
+	float NdL = dot(toLight, normal);
+	if (NdL < 0.0f)
+		return;
+
+	//Check if light source is occluded
+	Ray r;
+	r.o = origin;
+	r.d = toLight;
+	r.o += 0.0001f * r.d;
+	float t0;
+	for (int i = 0; i < gSphereCount; i++)
+	{
+		RayVSSphereDistance(gSpheres[i], r, t0);
+		if (t0 > 0.0f && t0 < dist)
+			return;
+	}
+	t0 = -1.0f;
+	for (i = 0; i < gTriangleCount; i++)
+	{
+		RayVSTriangleDistance(gTriangles[i], r, t0);
+		if (t0 > 0.0f && t0 < dist)
+			return;
+	}
+
+	float divby = (dist / spotlight.range) + 1.0f;
+	float attenuation = pow(max(dot(-toLight, spotlight.dir), 0.0f),spotlight.cone) * spotlight.intensity / (divby * divby);
+	if (attenuation > 0.0f)
+	{
+		diffuse += NdL * spotlight.color * attenuation;
+		float3 halfVector = normalize(toLight + normalize(rayOrigin - origin));
+		float NdH = dot(normal, halfVector);
+		if (NdH > 0.0f)
+			specular += spotlight.color * pow(NdH, 6.0f) * attenuation;
+		diffuse += float3(attenuation.xxx);
+	}
+}
 
 void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
 {
@@ -385,6 +437,10 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			for (i = 0; i < gPointLightCount; i++)
 			{
 				PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
+			}
+			for (i = 0; i < gSpotLightCount; i++)
+			{
+				SpotLightContribution(r.o, intersectionPoint, intersectionNormal, gSpotLights[i], lspec, ldiffuse);
 			}
 			//CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
 

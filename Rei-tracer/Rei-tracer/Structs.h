@@ -40,6 +40,24 @@ struct PointLight
 	float range;
 };
 
+struct SpotLight
+{
+	SpotLight() {};
+	SpotLight(float x, float y, float z, float intensity, float red, float green, float blue, float range, float dirx, float diry, float dirz, float cone)
+	{
+		posx = x; posy = y; posz = z; this->intensity = intensity; this->red = red; this->green = green; this->blue = blue; this->range = range;
+		this->dirx = dirx; this->diry = diry; this->dirz = dirz; this->cone = cone;
+	}
+	float posx, posy, posz;
+	float intensity;
+	float red, green, blue;
+	float range;
+	float dirx;
+	float diry;
+	float dirz;
+	float cone;
+};
+
 struct TriangleVertex
 {
 	TriangleVertex() {};

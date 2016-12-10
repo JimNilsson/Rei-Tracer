@@ -7,6 +7,7 @@
 #define MAX_TRIANGLES 2048
 #define MAX_MESHTEXTURES 8
 #define MAX_POINTLIGHTS 10
+#define MAX_SPOTLIGHTS 10
 #define TEXTURE_DIMENSION 256U
 #define TEXTURE_BYTESIZE 256U * 256U * 4U
 
@@ -71,7 +72,7 @@ struct ComputeConstants
 	uint32_t gPointLightCount = 0;
 	int32_t gBounceCounts = 0;
 	uint32_t gTextureCount = 0;
-	int pad;
+	int32_t gSpotLightCount = 0;
 	int pad2;
 	int pad3;
 };
@@ -98,6 +99,7 @@ enum StructuredBuffers
 	SB_TRIANGLES,
 	SB_POINTLIGHTS,
 	SB_TEXTUREOFFSETS,
+	SB_SPOTLIGHTS,
 	SB_PLANES,
 	SB_OBBS,
 	SB_COUNT
@@ -175,6 +177,7 @@ public:
 	virtual void DecreaseBounceCount();
 	virtual void SetBounceCount(unsigned bounces);
 	virtual void SetPointLights(PointLight* pointlights, size_t count);
+	virtual void SetSpotLights(SpotLight* spotlights, size_t count);
 	virtual void SetTriangles(Triangle* triangles, size_t count);
 	virtual void SetSpheres(Sphere* spheres, size_t count);
 	virtual void PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string& filenameDiffuse, const std::string& filenameNormal );
