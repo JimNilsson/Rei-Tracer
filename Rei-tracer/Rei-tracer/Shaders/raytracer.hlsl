@@ -1,19 +1,4 @@
-struct CameraInfo
-{
-	float3 position;
-	float3 direction;
-	float3 up;
-	float3 right;
-	float fardist;
-	float neardist;
-	float aspectratio;
-	float fov;
-	int width;
-	int height;
-	float pad;
-	float pad2;
 
-};
 
 cbuffer CameraBuffer : register(b0)
 {
@@ -39,8 +24,8 @@ cbuffer Counts : register(b1)
 	int gBounceCount;
 	int gTextureCount;
 	int gSpotLightCount;
-	int padder2;
-	int padder3;
+	int gMeshIndexCount;
+	int gMeshPartitionCount;
 };
 
 struct Sphere
@@ -49,11 +34,7 @@ struct Sphere
 	float radius;
 };
 
-struct Plane
-{
-	float3 normal;
-	float d;
-};
+
 struct Ray
 {
 	float3 o;
@@ -112,10 +93,16 @@ struct MeshPartition
 
 struct MeshIndices
 {
-	int lowerTriangleIndex;
-	int upperTriangleIndex;
+	int lowerIndex;
+	int upperIndex;
 	int rootPartition;
 	int partitionCount;
+};
+
+struct Box
+{
+	float3 min;
+	float3 max;
 };
 
 
@@ -165,7 +152,9 @@ void RayVSSphereDistance(Sphere s, Ray r, out float t0)
 	t0 = tca - thc;
 }
 
-void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout float v, out float3 normal, out float4 tangent)
+
+
+void RayVSTriangle(Triangle t, Ray r, inout float dist, inout float u, inout float v, inout float3 normal, out float4 tangent)
 {
 
 	float3 e1 = t.v2.position - t.v1.position;
@@ -215,39 +204,186 @@ void RayVSTriangleDistance(Triangle t, Ray r, out float dist)
 		return;
 	dist = f * dot(e2, rr);
 }
-struct CircularLight
+//struct CircularLight
+//{
+//	float3 color;
+//	float range;
+//	float3 normal;
+//	float intensity;
+//	float3 position;
+//	float radius;
+//
+//};
+//
+//void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, CircularLight clight, inout float3 specular, inout float3 diffuse)
+//{
+//	float3 toLight = clight.position - origin;
+//
+//	float3 projected = -toLight - ((dot(-toLight, clight.normal)/dot(clight.normal,clight.normal)) * clight.normal);
+//	float projDist = length(projected);
+//	projected /= projDist;
+//	
+//	float3 onCircle = clight.position + projected * min(clight.radius, projDist);
+//	float3 circleToPos = origin - onCircle;
+//	float dist = length(circleToPos);
+//	circleToPos /= dist;
+//
+//	float NdL = dot(-normal, clight.normal) * dot(circleToPos, clight.normal);
+//	if (NdL < 0.0f)
+//		return;
+//	float divby = (dist / clight.range) + 1.0f;
+//
+//	float attenuation = pow(NdL,7.0f) * clight.intensity / (divby * divby);
+//	diffuse += saturate(clight.color * attenuation);
+//	specular.r += 0.000001f;//blabla
+//}
+bool RayVSBox(Ray r, float3 rcpDir, Box b)
 {
-	float3 color;
-	float range;
-	float3 normal;
-	float intensity;
-	float3 position;
-	float radius;
+	float tx1 = (b.min.x - r.o.x)*rcpDir.x;
+	float tx2 = (b.max.x - r.o.x)*rcpDir.x;
+	float tmin = min(tx1, tx2);
+	float tmax = max(tx1, tx2);
 
-};
+	float ty1 = (b.min.y - r.o.y)*rcpDir.y;
+	float ty2 = (b.max.y - r.o.y)*rcpDir.y;
+	tmin = min(ty1, ty2);
+	tmax = max(ty1, ty2);
 
-void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, CircularLight clight, inout float3 specular, inout float3 diffuse)
+	float tz1 = (b.min.z - r.o.z)*rcpDir.z;
+	float tz2 = (b.max.z - r.o.z)*rcpDir.z;
+	tmin = min(tz1, tz2);
+	tmax = max(tz1, tz2);
+
+	return tmax >= max(tmin, 0.0f);
+}
+
+void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, out int triangleIndex, inout float3 normal, out float4 tangent)
 {
-	float3 toLight = clight.position - origin;
+	//For each MeshIndices traverse octtree if any, else traverse triangles
+	float previous = dist;
+	for (int i = 0; i < gMeshIndexCount; i++)
+	{
+		if (gMeshIndices[i].rootPartition >= 0)
+		{
+			//We have an octtree to traverse
+			//No recursion in hlsl, we'll have to use a stack
+			int stack[64];
+			int stackPtr = 0;
+			int nodeIndex = gMeshIndices[i].rootPartition;
+			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
 
-	float3 projected = -toLight - ((dot(-toLight, clight.normal)/dot(clight.normal,clight.normal)) * clight.normal);
-	float projDist = length(projected);
-	projected /= projDist;
-	
-	float3 onCircle = clight.position + projected * min(clight.radius, projDist);
-	float3 circleToPos = origin - onCircle;
-	float dist = length(circleToPos);
-	circleToPos /= dist;
+			stack[stackPtr] = nodeIndex;
+			stackPtr++;
 
-	float NdL = dot(-normal, clight.normal) * dot(circleToPos, clight.normal);
-	if (NdL < 0.0f)
-		return;
-	float divby = (dist / clight.range) + 1.0f;
+			while (stackPtr)
+			{
+				nodeIndex = stack[stackPtr - 1];
+				stackPtr--;
 
-	float attenuation = pow(NdL,7.0f) * clight.intensity / (divby * divby);
-	diffuse += saturate(clight.color * attenuation);
-	specular.r += 0.000001f;//blabla
+				Box b;
+				b.min = gMeshPartitions[nodeIndex].position - gMeshPartitions[nodeIndex].halflengths;
+				b.max = gMeshPartitions[nodeIndex].position + gMeshPartitions[nodeIndex].halflengths;
 
+				if (RayVSBox(r, rcpDir, b))
+				{
+					if (gMeshIndices[i].partitionCount >= (nodeIndex - gMeshIndices[i].rootPartition) * 8 + 8 + 1)
+					{
+						[unroll]
+						for (int c = 1; c < 9; c++)
+						{
+							stack[stackPtr++] = ((nodeIndex - gMeshIndices[i].rootPartition) * 8) + c;
+						}
+					}
+					for (int c = gMeshPartitions[nodeIndex].lowerIndex; c < gMeshPartitions[nodeIndex].upperIndex; c++)
+					{
+						previous = dist;
+						RayVSTriangle(gTriangles[c], r, dist, u, v, normal, tangent);
+						if (dist < previous)
+						{
+							triangleIndex = c;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			//We check the triangles in this range of triangles
+			for (int j = gMeshIndices[i].lowerIndex; j < gMeshIndices[i].upperIndex; j++)
+			{
+				previous = dist;
+				RayVSTriangle(gTriangles[j], r, dist, u, v, normal, tangent);
+				if (dist < previous)
+				{
+					triangleIndex = j;
+				}
+			}
+		}
+	}
+}
+
+bool TraverseOctTreeForShadows(Ray r, float dist)
+{
+	//For each MeshIndices traverse octtree if any, else traverse triangles
+	float comp = -1.0f;
+	for (int i = 0; i < gMeshIndexCount; i++)
+	{
+		if (gMeshIndices[i].rootPartition >= 0)
+		{
+			//We have an octtree to traverse
+			//No recursion in hlsl, we'll have to use a stack
+			int stack[64];
+			int stackPtr = 0;
+			int nodeIndex = gMeshIndices[i].rootPartition;
+			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
+
+			stack[stackPtr] = nodeIndex;
+			stackPtr++;
+
+			while (stackPtr)
+			{
+				nodeIndex = stack[stackPtr - 1];
+				stackPtr--;
+
+				Box b;
+				b.min = gMeshPartitions[nodeIndex].position - gMeshPartitions[nodeIndex].halflengths;
+				b.max = gMeshPartitions[nodeIndex].position + gMeshPartitions[nodeIndex].halflengths;
+
+				if (RayVSBox(r, rcpDir, b))
+				{
+					if (gMeshIndices[i].partitionCount >= (nodeIndex - gMeshIndices[i].rootPartition) * 8 + 8 + 1)
+					{
+						[unroll]
+						for (int c = 1; c < 9; c++)
+						{
+							stack[stackPtr++] = ((nodeIndex - gMeshIndices[i].rootPartition) * 8) + c;
+						}
+					}
+					for (int c = gMeshPartitions[nodeIndex].lowerIndex; c < gMeshPartitions[nodeIndex].upperIndex; c++)
+					{
+						RayVSTriangleDistance(gTriangles[c], r, comp);
+						if (comp < dist && comp > 0.0f)
+						{
+							return true;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			//We check the triangles that arent partitioned into an octtree
+			for (int j = gMeshIndices[i].lowerIndex; j < gMeshIndices[i].upperIndex; j++)
+			{
+				RayVSTriangleDistance(gTriangles[j], r, comp);
+				if (comp < dist && comp > 0.0f)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
 }
 
 void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotLight spotlight, inout float3 specular, inout float3 diffuse)
@@ -294,12 +430,8 @@ void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotL
 
 void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
 {
-	//specular = float3(0.0f, 0.0f, 0.0f);
-	//diffuse = float3(0.0f, 0.0f, 0.0f);
 	float3 toLight = pointlight.position - origin;
 	float dist = length(toLight);
-	//if (dist > pointlight.range)
-	//	return;
 	toLight = toLight / dist;
 	float NdL = dot(toLight, normal);
 	if (NdL < 0.0f)
@@ -319,12 +451,17 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 			return;
 	}
 	t0 = -1.0f;
-	for (i = 0; i < gTriangleCount; i++)
+	/*for (i = 0; i < gTriangleCount; i++)
 	{
 		RayVSTriangleDistance(gTriangles[i], r, t0);
 		if (t0 > 0.0f && t0 < dist)
 			return;
-	}
+	}*/
+
+	if (TraverseOctTreeForShadows(r, dist))
+		return;
+
+
 	float divby = (dist / pointlight.range) + 1.0f;
 	float attenuation = pointlight.intensity / (divby * divby);
 	diffuse += NdL * pointlight.color * attenuation;
@@ -334,6 +471,8 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 		specular += pointlight.color * pow(NdH, 6.0f) * attenuation;
 	
 }
+
+
 
 RWTexture2D<float4> output : register(u0);
 
@@ -402,15 +541,16 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			float dduu = 0.0f;
 			float ddvv = 0.0f;
 			int triangleIndex = -1;
-			for (i = 0; i < gTriangleCount; i++)
-			{
-				float previous = intersectionDistance;
-				RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal, intersectionTangent);
-				if (intersectionDistance < previous)
-				{
-					triangleIndex = i;
-				}
-			}
+			//for (i = 0; i < gTriangleCount; i++)
+			//{
+			//	float previous = intersectionDistance;
+			//	RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal, intersectionTangent);
+			//	if (intersectionDistance < previous)
+			//	{
+			//		triangleIndex = i;
+			//	}
+			//}
+			TraverseOctTree(r, intersectionDistance, dduu, ddvv, triangleIndex, intersectionNormal, intersectionTangent);
 
 			if (intersectionDistance < 0.0f)
 				break;

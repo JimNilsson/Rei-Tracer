@@ -76,7 +76,7 @@ struct ComputeConstants
 	int32_t gBounceCounts = 0;
 	uint32_t gTextureCount = 0;
 	int32_t gSpotLightCount = 0;
-	int32_t gPartitionedMeshCount = 0;
+	int32_t gMeshIndexCount = 0;
 	int32_t gPartitionCount = 0;
 };
 
@@ -103,10 +103,8 @@ enum StructuredBuffers
 	SB_POINTLIGHTS,
 	SB_TEXTUREOFFSETS,
 	SB_SPOTLIGHTS,
-	SB_PARTITIONEDMESH,
-	SB_PARTITIONEDINDEX,
-	SB_PLANES,
-	SB_OBBS,
+	SB_MESHPARTITIONS,
+	SB_MESHINDICES,
 	SB_COUNT
 };
 
