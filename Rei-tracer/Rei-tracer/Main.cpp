@@ -96,6 +96,9 @@ int main(int argc, char** argv)
 #pragma endregion
 	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
 	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	unsigned nodecount;
+	OctNode* tree = nullptr;
+	unsigned trisOfPartioned = objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2,6 + trianglesAdded, &tree, 1, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
 	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
 
 	graphics->PrepareTextures(0, 0, "ft_stone01_c.png", "ft_stone01_n.png");

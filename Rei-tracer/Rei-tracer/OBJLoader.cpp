@@ -173,3 +173,200 @@ unsigned OBJLoader::LoadOBJ(const std::string & filename, Triangle * triangleArr
 	return (unsigned)nrOfVertices / 3;
 
 }
+
+unsigned OBJLoader::PartitionMesh(Triangle * triangles, unsigned triangleCount, unsigned offset, OctNode ** octTree, unsigned levels, unsigned& nodeCountOut, unsigned maxCount) const
+{
+	/*
+		k-ary tree
+	  Stored in an array:
+	  [A][AA][AB][AC][AD][AE][AF][AG][AH][AAA][AAB][AAC][AAD][AAE][AAF][AAG][AAH][ABA][ABB][ABC]...
+	   0  1   2   3   4   5   6   7   8   9    10   11   12   13   14   15   16   17   18   19
+	   childindexN = (parentindex * 8) + N
+	   i.e.
+	   indexOf(AAB) = indexOf(AA) * 8 + 2 = 10
+	*/
+	XMFLOAT3 centerPoint;
+	float x, y, z;
+	x = y = z = 0;
+	float maxx, maxy, maxz;
+	float minx, miny, minz;
+	maxx = maxy = maxz = -FLT_MAX;
+	minx = miny = minz = FLT_MAX;
+	for (int i = 0; i < triangleCount; i++)
+	{
+		if (triangles[i].v1.posx > maxx)
+			maxx = triangles[i].v1.posx;
+		if (triangles[i].v2.posx > maxx)
+			maxx = triangles[i].v2.posx;
+		if (triangles[i].v3.posx > maxx)
+			maxx = triangles[i].v3.posx;
+
+		if (triangles[i].v1.posy > maxy)
+			maxy = triangles[i].v1.posy;
+		if (triangles[i].v2.posy > maxy)
+			maxy = triangles[i].v2.posy;
+		if (triangles[i].v3.posy > maxy)
+			maxy = triangles[i].v3.posy;
+
+		if (triangles[i].v1.posz > maxz)
+			maxz = triangles[i].v1.posz;
+		if (triangles[i].v2.posz > maxz)
+			maxz = triangles[i].v2.posz;
+		if (triangles[i].v3.posz > maxz)
+			maxz = triangles[i].v3.posz;
+		
+		//min
+		if (triangles[i].v1.posx < minx)
+			minx = triangles[i].v1.posx;
+		if (triangles[i].v2.posx < minx)
+			minx = triangles[i].v2.posx;
+		if (triangles[i].v3.posx < minx)
+			minx = triangles[i].v3.posx;
+
+		if (triangles[i].v1.posy < miny)
+			miny = triangles[i].v1.posy;
+		if (triangles[i].v2.posy < miny)
+			miny = triangles[i].v2.posy;
+		if (triangles[i].v3.posy < miny)
+			miny = triangles[i].v3.posy;
+
+		if (triangles[i].v1.posz < minz)
+			minz = triangles[i].v1.posz;
+		if (triangles[i].v2.posz < minz)
+			minz = triangles[i].v2.posz;
+		if (triangles[i].v3.posz < minz)
+			minz = triangles[i].v3.posz;
+	}
+
+
+	XMFLOAT3 centerPos = XMFLOAT3((maxx + minx) / 2.0f, (maxy + miny) / 2.0f, (maxz + minz) / 2.0f);
+	XMFLOAT3 halflengths = XMFLOAT3((maxx - minx) / 2.0f, (maxy - miny) / 2.0f, (maxy - miny) / 2.0f);
+	//halflengths.x += 0.01f;
+	//halflengths.y += 0.01f;
+	//halflengths.z += 0.01f;
+
+	nodeCountOut = 0;
+	for (int i = levels; i >= 0; i--)
+	{
+		nodeCountOut += _Pow_int(8, i);
+	}
+	*octTree = new OctNode[nodeCountOut];
+	OctNode* tree = *octTree;
+	_BuildOctTree(tree, 0, nodeCountOut, centerPos, halflengths);
+
+	std::vector<Triangle> newTriangles;
+	newTriangles.reserve(2048);
+	std::vector<Triangle> nodeTriangles;
+	nodeTriangles.reserve(2048);
+	uint8_t* taken = new uint8_t[triangleCount];
+	memset(taken, 0, sizeof(uint8_t) * triangleCount);
+	//For every node, check every triangle
+	//If a triangle is partially inside a node, it is the parent node who gets it
+	for (int i = nodeCountOut - 1; i >= 0; i--)
+	{
+		for (int it = 0; it < triangleCount; it++)
+		{
+			if (!taken[it])
+			{
+				if (_NodeContainsTriangle(tree[i], triangles[it]))
+				{
+					nodeTriangles.push_back(triangles[it]);
+					taken[it] = 1;
+				}
+			}
+		}
+		
+		tree[i].lower = offset + newTriangles.size();
+		tree[i].upper = offset + newTriangles.size() + nodeTriangles.size();
+		for (auto& tri : nodeTriangles)
+			newTriangles.push_back(tri);
+		nodeTriangles.clear();
+	}
+	delete[] taken;
+	if (newTriangles.size() - triangleCount > maxCount)
+		throw std::exception("Cant fit all the duplicate triangles in the array");
+
+	memcpy(triangles, &newTriangles[0], sizeof(Triangle) * newTriangles.size());
+
+	return newTriangles.size();
+}
+
+void OBJLoader::_BuildOctTree(OctNode * octTree, unsigned index, unsigned stop, DirectX::XMFLOAT3 pos, DirectX::XMFLOAT3 halflengths) const
+{
+	if (index >= stop)
+		return;
+
+	octTree[index].posx = pos.x;
+	octTree[index].posy = pos.y;
+	octTree[index].posz = pos.z;
+	octTree[index].halfx = halflengths.x;
+	octTree[index].halfy = halflengths.y;
+	octTree[index].halfz = halflengths.z;
+	
+	halflengths.x /= 2.0f;
+	halflengths.y /= 2.0f;
+	halflengths.z /= 2.0f;
+
+	for (int i = 0; i < 8; i++)
+	{
+		unsigned childIndex = (8 * index) + (i + 1);
+		float offsetx = i % 2 == 0 ? -1 : 1;
+		float offsetz = i % 4 < 2 ? 1 : -1;
+		float offsety = i < 4 ? 1 : -1;
+		XMFLOAT3 newpos = pos;
+		newpos.x += offsetx * (halflengths.x);
+		newpos.y += offsety * (halflengths.y);
+		newpos.z += offsetz * (halflengths.z);
+		_BuildOctTree(octTree, childIndex, stop, newpos, halflengths);
+	}
+
+}
+
+bool OBJLoader::_NodeContainsTriangle(const OctNode & node, const Triangle & t) const
+{
+	//XMVECTOR center = XMVectorSet(node.posx, node.posy, node.posz, 1.0f);
+	//XMVECTOR vertices[3];
+	//vertices[0] = XMVectorSet(t.v1.posx, t.v1.posy, t.v1.posz, 1.0f);
+	//vertices[1] = XMVectorSet(t.v2.posx, t.v2.posy, t.v2.posz, 1.0f);
+	//vertices[2] = XMVectorSet(t.v3.posx, t.v3.posy, t.v3.posz, 1.0f);
+
+	//XMVECTOR planes[6];
+	//planes[0] = XMVectorSet(1.0f, 0.0f, 0.0f, (node.posx - node.halfx));
+	//planes[1] = XMVectorSet(-1.0f, 0.0f, 0.0f, -(node.posx + node.halfx));
+	//planes[2] = XMVectorSet(0.0f, 1.0f, 0.0f, (node.posy - node.halfy));
+	//planes[3] = XMVectorSet(0.0f, -1.0f, 0.0f, -(node.posy + node.halfy));
+	//planes[4] = XMVectorSet(0.0f, 0.0f, 1.0f, (node.posz - node.halfz));
+	//planes[5] = XMVectorSet(0.0f, 0.0f, -1.0f, -(node.posz + node.halfz));
+
+	//bool completelyOutside = true;
+	//for (int i = 0; i < 3; i++)
+	//{
+	//	bool vertInside = true;
+	//	for (int j = 0; j < 6; j++)
+	//	{
+	//		float test = XMVectorGetX(XMVector3Dot(vertices[i] - (planes[j] * XMVectorGetW(planes[j])) , planes[j]));
+	//		if (test < 0.0f)
+	//		{
+	//			vertInside = false;
+	//		}
+	//	}
+	//	if (vertInside)
+	//		completelyOutside = false;
+	//}
+	//if (completelyOutside)
+	//	return false;
+
+	if ((t.v1.posx >= node.posx - node.halfx && t.v1.posx <= node.posx + node.halfx &&
+		t.v1.posy >= node.posy - node.halfy && t.v1.posy <= node.posy + node.halfy &&
+		t.v1.posz >= node.posz - node.halfz && t.v1.posz <= node.posz + node.halfz) &&
+		(t.v2.posx >= node.posx - node.halfx && t.v2.posx <= node.posx + node.halfx &&
+		t.v2.posy >= node.posy - node.halfy && t.v2.posy <= node.posy + node.halfy &&
+		t.v2.posz >= node.posz - node.halfz && t.v2.posz <= node.posz + node.halfz) &&
+		(t.v3.posx >= node.posx - node.halfx && t.v3.posx <= node.posx + node.halfx &&
+		t.v3.posy >= node.posy - node.halfy && t.v3.posy <= node.posy + node.halfy &&
+		t.v3.posz >= node.posz - node.halfz && t.v3.posz <= node.posz + node.halfz))
+		return true;
+
+	return false;
+
+}

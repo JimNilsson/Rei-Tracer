@@ -90,6 +90,15 @@ struct Triangle
 	TriangleVertex v3;
 };
 
+//A box along with the index of the first and last triangle inside of it.
+struct OctNode
+{
+	float posx, posy, posz; //centerpos
+	unsigned lower = 0;
+	float halfx, halfy, halfz; //halflengths
+	unsigned upper = 0;
+};
+
 struct PNTVertex
 {
 	float posx, posy, posz;
