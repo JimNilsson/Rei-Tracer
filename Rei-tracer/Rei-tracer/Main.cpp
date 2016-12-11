@@ -98,9 +98,20 @@ int main(int argc, char** argv)
 	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
 	unsigned nodecount;
 	OctNode* tree = nullptr;
-	unsigned trisOfPartioned = objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2,6 + trianglesAdded, &tree, 1, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
-	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
+	objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2,6 + trianglesAdded, &tree, 2, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
+	MeshIndices mi[2];
+	mi[0].lowerIndex = 0;
+	mi[0].upperIndex = 6 + trianglesAdded;
+	mi[0].rootPartition = -1;
+	mi[0].partitionCount = -1;
+	mi[1].lowerIndex = 6 + trianglesAdded;
+	mi[1].upperIndex = 6 + trianglesAdded + tadd2;
+	mi[1].rootPartition = 0;
+	mi[1].partitionCount = nodecount;
 
+	graphics->SetMeshPartitions(tree, mi, nodecount, 2);
+	
+	graphics->SetTriangles(triangles, 6 + trianglesAdded + tadd2);
 	graphics->PrepareTextures(0, 0, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6, 6 + trianglesAdded - 1, "ft_stone01_c.png", "ft_stone01_n.png");
 	graphics->PrepareTextures(6 + trianglesAdded, 6 + trianglesAdded + tadd2, "lunarrock_s.png", "lunarrock_n.png");
@@ -152,7 +163,7 @@ int main(int argc, char** argv)
 
 		Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 	}
-
+	delete[] tree;
 	Core::ShutDown();
 	return 0;
 }

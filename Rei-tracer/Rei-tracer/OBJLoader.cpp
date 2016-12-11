@@ -261,7 +261,8 @@ unsigned OBJLoader::PartitionMesh(Triangle * triangles, unsigned triangleCount, 
 	uint8_t* taken = new uint8_t[triangleCount];
 	memset(taken, 0, sizeof(uint8_t) * triangleCount);
 	//For every node, check every triangle
-	//If a triangle is partially inside a node, it is the parent node who gets it
+	//If a triangle is only partially inside a node, it is the parent node who gets it
+	//triangle must be fully contained to go into a node
 	for (int i = nodeCountOut - 1; i >= 0; i--)
 	{
 		for (int it = 0; it < triangleCount; it++)
@@ -283,8 +284,6 @@ unsigned OBJLoader::PartitionMesh(Triangle * triangles, unsigned triangleCount, 
 		nodeTriangles.clear();
 	}
 	delete[] taken;
-	if (newTriangles.size() - triangleCount > maxCount)
-		throw std::exception("Cant fit all the duplicate triangles in the array");
 
 	memcpy(triangles, &newTriangles[0], sizeof(Triangle) * newTriangles.size());
 

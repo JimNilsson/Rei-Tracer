@@ -15,6 +15,7 @@ public:
 	virtual void SetSpheres(Sphere* spheres, size_t count) = 0;
 	virtual void SetPointLights(PointLight* pointlights, size_t count) = 0;
 	virtual void SetSpotLights(SpotLight* spotlights, size_t count) = 0;
+	virtual void SetMeshPartitions(OctNode* nodes, MeshIndices* indices, size_t nodeCount, size_t indexCount) = 0;
 	virtual void PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string& filenameDiffuse, const std::string& filenameNormal) = 0;
 	virtual void SetTextures() = 0;
 	virtual void Draw() = 0;

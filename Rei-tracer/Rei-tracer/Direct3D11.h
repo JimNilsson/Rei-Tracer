@@ -8,6 +8,9 @@
 #define MAX_MESHTEXTURES 8
 #define MAX_POINTLIGHTS 10
 #define MAX_SPOTLIGHTS 10
+#define MAX_OCTNODES_PER_MESH 1+8+64+512
+#define MAX_MESHES 10
+
 #define TEXTURE_DIMENSION 256U
 #define TEXTURE_BYTESIZE 256U * 256U * 4U
 
@@ -73,8 +76,8 @@ struct ComputeConstants
 	int32_t gBounceCounts = 0;
 	uint32_t gTextureCount = 0;
 	int32_t gSpotLightCount = 0;
-	int pad2;
-	int pad3;
+	int32_t gPartitionedMeshCount = 0;
+	int32_t gPartitionCount = 0;
 };
 
 struct ComputeCamera
@@ -100,6 +103,8 @@ enum StructuredBuffers
 	SB_POINTLIGHTS,
 	SB_TEXTUREOFFSETS,
 	SB_SPOTLIGHTS,
+	SB_PARTITIONEDMESH,
+	SB_PARTITIONEDINDEX,
 	SB_PLANES,
 	SB_OBBS,
 	SB_COUNT
@@ -180,6 +185,7 @@ public:
 	virtual void SetSpotLights(SpotLight* spotlights, size_t count);
 	virtual void SetTriangles(Triangle* triangles, size_t count);
 	virtual void SetSpheres(Sphere* spheres, size_t count);
+	virtual void SetMeshPartitions(OctNode* nodes, MeshIndices* indices, size_t nodeCount, size_t indexCount);
 	virtual void PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string& filenameDiffuse, const std::string& filenameNormal );
 	virtual void SetTextures();
 

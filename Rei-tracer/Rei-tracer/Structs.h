@@ -99,6 +99,14 @@ struct OctNode
 	unsigned upper = 0;
 };
 
+struct MeshIndices
+{
+	int lowerIndex;
+	int upperIndex;
+	int rootPartition;
+	int partitionCount;
+};
+
 struct PNTVertex
 {
 	float posx, posy, posz;

@@ -56,6 +56,8 @@ Direct3D11::Direct3D11()
 	_CreateStructuredBuffer(&_structuredBuffers[SB_POINTLIGHTS], sizeof(PointLight), MAX_POINTLIGHTS);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_SPOTLIGHTS], sizeof(SpotLight), MAX_SPOTLIGHTS);
 	_CreateStructuredBuffer(&_structuredBuffers[SB_TEXTUREOFFSETS], sizeof(TextureOffset), MAX_MESHTEXTURES);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_PARTITIONEDMESH], sizeof(OctNode), MAX_OCTNODES_PER_MESH * MAX_MESHES);
+	_CreateStructuredBuffer(&_structuredBuffers[SB_PARTITIONEDINDEX], sizeof(MeshIndices), MAX_MESHES);
 	
 
 	_rawTextureData = new uint8_t[256U * 256U * 4U * MAX_MESHTEXTURES * 2U];
@@ -180,6 +182,8 @@ void Direct3D11::Draw()
 	_deviceContext->CSSetShaderResources(3, 1, &(_structuredBuffers[StructuredBuffers::SB_TEXTUREOFFSETS]->srv));
 	_deviceContext->CSSetShaderResources(4, 1, &_textureArray);
 	_deviceContext->CSSetShaderResources(5, 1, &(_structuredBuffers[StructuredBuffers::SB_SPOTLIGHTS]->srv));
+	_deviceContext->CSSetShaderResources(6, 1, &(_structuredBuffers[StructuredBuffers::SB_PARTITIONEDINDEX]->srv));
+	_deviceContext->CSSetShaderResources(7, 1, &(_structuredBuffers[StructuredBuffers::SB_PARTITIONEDMESH]->srv));
 
 	_deviceContext->CSSetSamplers(0, 1, &_samplerStates[Samplers::LINEAR]);
 
@@ -259,6 +263,24 @@ void Direct3D11::SetSpheres(Sphere * spheres, size_t count)
 	SAFE_RELEASE(resource);
 	_computeConstants.gSphereCount = (int)min(_structuredBuffers[SB_SPHERES]->count, count);
 	_computeConstantsUpdated = true;
+}
+
+void Direct3D11::SetMeshPartitions(OctNode * nodes, MeshIndices * indices, size_t nodeCount, size_t indexCount)
+{
+	ID3D11Resource* resource = nullptr;
+	_structuredBuffers[SB_PARTITIONEDMESH]->srv->GetResource(&resource);
+	_Map(resource, nodes, _structuredBuffers[SB_PARTITIONEDMESH]->stride, min(_structuredBuffers[SB_PARTITIONEDMESH]->count, (uint32_t)nodeCount), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gPartitionCount = nodeCount;
+
+	resource = nullptr;
+	_structuredBuffers[SB_PARTITIONEDINDEX]->srv->GetResource(&resource);
+	_Map(resource, nodes, _structuredBuffers[SB_PARTITIONEDINDEX]->stride, min(_structuredBuffers[SB_PARTITIONEDINDEX]->count, (uint32_t)indexCount), D3D11_MAP_WRITE_DISCARD, 0);
+	SAFE_RELEASE(resource);
+	_computeConstants.gPartitionedMeshCount = indexCount;
+
+	_computeConstantsUpdated = true;
+
 }
 
 void Direct3D11::PrepareTextures(unsigned indexStart, unsigned indexEnd, const std::string & filenameDiffuse, const std::string& filenameNormal)

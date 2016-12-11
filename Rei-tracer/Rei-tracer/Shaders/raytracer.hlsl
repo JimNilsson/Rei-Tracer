@@ -102,6 +102,21 @@ struct TriangleTexture
 	int normalIndex;
 };
 
+struct MeshPartition
+{
+	float3 position;
+	int lowerIndex;
+	float3 halflengths;
+	int upperIndex;
+};
+
+struct MeshIndices
+{
+	int lowerTriangleIndex;
+	int upperTriangleIndex;
+	int rootPartition;
+	int partitionCount;
+};
 
 
 StructuredBuffer<Sphere> gSpheres : register(t0);
@@ -110,6 +125,8 @@ StructuredBuffer<PointLight> gPointLights : register(t2);
 StructuredBuffer<TriangleTexture> gTriangleTextureIndices : register(t3);
 Texture2DArray gMeshTextures : register(t4);
 StructuredBuffer<SpotLight> gSpotLights : register(t5);
+StructuredBuffer<MeshIndices> gMeshIndices : register(t6);
+StructuredBuffer<MeshPartition> gMeshPartitions : register(t7);
 
 
 SamplerState gSampleLinear : register(s0);
