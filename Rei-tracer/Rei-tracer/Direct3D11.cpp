@@ -196,11 +196,21 @@ void Direct3D11::Draw()
 	_timer->Stop();
 	_computeShader->Unset();
 	_timer->GetTime();
-	/*std::stringstream ss;
-	ss << "FPS: " << static_cast<int>(10.0f / _timer->GetTime()) << "  Time to render: " << _timer->GetTime();
+	static int frames = 0;
+	static float acc = 0.0f;
+	acc += _timer->GetTime();
+	frames++;
+	if (frames > 10)
+	{
+		std::stringstream ss;
+		ss << "Avg frametime: " << acc / frames;
+		Core::GetInstance()->GetWindow()->SetTitle(ss.str());
+		acc = 0.0f;
+		frames = 0;
+	}
+	
 
-	Core::GetInstance()->GetWindow()->SetTitle(ss.str());*/
-
+	frames++;
 	if (FAILED(_swapChain->Present(0, 0)))
 		return;
 }

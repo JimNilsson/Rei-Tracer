@@ -2,6 +2,19 @@
 #include <sstream>
 #include "OBJLoader.h"
 #include <crtdbg.h>
+#include <DirectXMath.h>
+
+using namespace DirectX;
+
+void MovePointlight(PointLight& pl, float dt)
+{
+	XMVECTOR pos = XMVectorSet(pl.posx, pl.posy, pl.posz, 1.0f);
+	XMMATRIX rotate = XMMatrixRotationY(dt * 1.0f);
+	pos = XMVector3Transform(pos, rotate);
+	pl.posx = XMVectorGetX(pos);
+	pl.posy = XMVectorGetY(pos);
+	pl.posz = XMVectorGetZ(pos);
+}
 
 int main(int argc, char** argv)
 {
@@ -118,13 +131,19 @@ int main(int argc, char** argv)
 	graphics->SetTextures();
 
 
-
+	int pointLightCount = 8;
 	PointLight pointlights[10];
-	pointlights[0] = PointLight(3.710f, 1.333f, -4.172f, 0.63f, 0.0f, 1.0f, 0.7f, 15.0f);
-	pointlights[1] = PointLight(5.0f, 0.25f, -5.0f, 0.63f, 0.0f, 0.3f, 1.0f, 15.0f);
-	pointlights[2] = PointLight(3.0f, 5.0f, 0.0f, 0.63f, 0.8f, 0.8f, 0.8f, 15.0f);
-	pointlights[3] = PointLight(5.0f, 5.0f, -8.0f, 0.63f, 1.0f, 0.0f, 1.0f, 15.0f);
-	graphics->SetPointLights(pointlights, 4);
+	pointlights[3] = PointLight(-9.0f, -9.0f, -0.0f, 0.33f, 1.0f, 1.0f, 1.0f, 15.0f);
+	pointlights[4] = PointLight(-9.0f, -7.0f, -0.0f, 0.33f, 1.0f, 0.8f, 1.0f, 15.0f);
+	pointlights[5] = PointLight(-9.0f, -5.0f, -0.0f, 0.33f, 1.0f, 0.6f, 1.0f, 15.0f);
+	pointlights[6] = PointLight(-9.0f, -3.0f, -0.0f, 0.33f, 1.0f, 0.4f, 1.0f, 15.0f);
+	pointlights[7] = PointLight(-9.0f, -1.0f, -0.0f, 0.33f, 1.0f, 0.2f, 1.0f, 15.0f);
+	pointlights[8] = PointLight(-9.0f, 1.0f, -0.0f, 0.33f, 0.8f, 0.0f, 1.0f, 15.0f);
+	pointlights[9] = PointLight(-9.0f, 3.0f, -0.0f, 0.33f, 0.6f, 0.0f, 1.0f, 15.0f);
+	pointlights[0] = PointLight(-9.0f, 5.0f, -0.0f, 0.33f, 0.4f, 0.0f, 1.0f, 15.0f);
+	pointlights[1] = PointLight(-9.0f, 7.0f, -0.0f, 0.33f, 0.2f, 0.0f, 1.0f, 15.0f);
+	pointlights[2] = PointLight(-9.0f, 9.0f, -0.0f, 0.33f, 0.0f, 0.0f, 1.0f, 15.0f);
+	graphics->SetPointLights(pointlights, pointLightCount);
 
 	SpotLight spotlights[10];
 	spotlights[0] = SpotLight(-2.0f, 0.0f, 2.0f, 0.70f,
@@ -157,11 +176,21 @@ int main(int argc, char** argv)
 			graphics->IncreaseBounceCount();
 		if (input->WasKeyPressed(SDLK_p))
 			graphics->DecreaseBounceCount();
+		if (input->IsKeyDown(SDLK_u))
+		{
+			for (int i = 0; i < pointLightCount; i++)
+			{
+				MovePointlight(pointlights[i], dt);
+			}
+			graphics->SetPointLights(&pointlights[0], pointLightCount);
+		}
+		cam->RotateYaw(input->GetMouseXMovement() * dt *0.01f);
+		cam->RotatePitch(input->GetMouseYMovement() * dt * 0.01f);
 		core->Update();
-		std::stringstream ss;
-		ss << "FPS: " << static_cast<int>(1.0f / timer->GetDeltaTime());
+		//std::stringstream ss;
+		//ss << "FPS: " << static_cast<int>(1.0f / timer->GetDeltaTime());
 
-		Core::GetInstance()->GetWindow()->SetTitle(ss.str());
+		//Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 	}
 	delete[] tree;
 	Core::ShutDown();

@@ -257,7 +257,7 @@ bool RayVSBox(Ray r, float3 rcpDir, Box b)
 	return tmax >= max(tmin, 0.0f);
 }
 
-void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, out int triangleIndex, inout float3 normal, out float4 tangent)
+void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inout int triangleIndex, inout float3 normal, out float4 tangent)
 {
 	//For each MeshIndices traverse octtree if any, else traverse triangles
 	float previous = dist;
