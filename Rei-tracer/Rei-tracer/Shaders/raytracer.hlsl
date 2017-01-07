@@ -227,16 +227,7 @@ bool RayVSBox(Ray r, float3 rcpDir, Box b)
 
 void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inout int triangleIndex, inout float3 normal, out float4 tangent, float3 rcpDir)
 {
-	//for (int i = 0; i < gTriangleCount; i++)
-	//{
-	//	float previous = dist;
-	//	RayVSTriangle(gTriangles[i], r, dist, u, v, normal, tangent);
-	//	if (dist < previous)
-	//	{
-	//		triangleIndex = i;
-	//	}
-	//}
-	//For each MeshIndices traverse octtree if any, else traverse triangles
+
 	float previous = dist;
 	for (int i = 0; i < gMeshIndexCount; i++)
 	{
@@ -301,15 +292,7 @@ void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inou
 
 bool TraverseOctTreeForShadows(Ray r, float dist, float3 rcpDir)
 {
-	//float t0;
-	//for (int i = 0; i < gTriangleCount; i++)
-	//{
-	//	RayVSTriangleDistance(gTriangles[i], r, t0);
-	//	if (t0 > 0.0f && t0 < dist)
-	//		return true;
-	//}
-	//return false;
-	//For each MeshIndices traverse octtree if any, else traverse triangles
+
 	
 	float comp = -1.0f;
 	for (int i = 0; i < gMeshIndexCount; i++)
@@ -428,7 +411,7 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 	r.o = origin;
 	r.d = toLight;
 	r.o += 0.0001f * r.d;
-	float3 rcpDir = rcp(r.d);
+	
 	float t0;
 	for (int i = 0; i < gSphereCount; i++)
 	{
@@ -436,7 +419,7 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
-
+	float3 rcpDir = rcp(r.d);
 	if (TraverseOctTreeForShadows(r, dist, rcpDir))
 		return;
 
@@ -496,7 +479,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
 	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
 
-	for (int samples = 0; samples < 1; samples++)
+	for (int samples = 0; samples < 9; samples++)
 	{
 		r.d = rayDirections[samples];
 		r.o = gCamPos;
@@ -567,7 +550,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		}
 	}
 
-	accumulatedDiff /= 1.0f;
-	accumulatedSpec /= 1.0f;
+	accumulatedDiff /= 9.0f;
+	accumulatedSpec /= 9.0f;
 	output[threadID.xy] = saturate(float4((accumulatedDiff + accumulatedSpec), 1.0f));
 }
