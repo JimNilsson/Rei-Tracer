@@ -502,7 +502,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		r.o = gCamPos;
 		for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
 		{
-			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
+			float3 rcpDir = rcp(r.d);
 			float3 intersectionNormal = r.d;
 			float3 intersectionPoint = r.o;
 			float4 intersectionTangent;
