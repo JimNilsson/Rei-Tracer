@@ -227,6 +227,7 @@ bool RayVSBox(Ray r, float3 rcpDir, Box b)
 
 void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inout int triangleIndex, inout float3 normal, out float4 tangent, float3 rcpDir)
 {
+	/*IN case we want to compare it to the non spatially divided version*/
 	//for (int i = 0; i < gTriangleCount; i++)
 	//{
 	//	float previous = dist;
@@ -301,6 +302,7 @@ void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inou
 
 bool TraverseOctTreeForShadows(Ray r, float dist, float3 rcpDir)
 {
+	/*IN case we want to compare it to the non spatially divided version*/
 	//float t0;
 	//for (int i = 0; i < gTriangleCount; i++)
 	//{
@@ -309,8 +311,8 @@ bool TraverseOctTreeForShadows(Ray r, float dist, float3 rcpDir)
 	//		return true;
 	//}
 	//return false;
-	//For each MeshIndices traverse octtree if any, else traverse triangles
 	
+	//For each MeshIndices traverse octtree if any, else traverse triangles
 	float comp = -1.0f;
 	for (int i = 0; i < gMeshIndexCount; i++)
 	{
@@ -410,7 +412,6 @@ void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotL
 		float NdH = dot(normal, halfVector);
 		if (NdH > 0.0f)
 			specular += spotlight.color * pow(NdH, 6.0f) * attenuation;
-		diffuse += float3(attenuation.xxx);
 	}
 }
 
@@ -436,13 +437,6 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 		if (t0 > 0.0f && t0 < dist)
 			return;
 	}
-	t0 = -1.0f;
-	/*for (i = 0; i < gTriangleCount; i++)
-	{
-		RayVSTriangleDistance(gTriangles[i], r, t0);
-		if (t0 > 0.0f && t0 < dist)
-			return;
-	}*/
 
 	if (TraverseOctTreeForShadows(r, dist, rcpDir))
 		return;
@@ -496,18 +490,14 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		rayDirections[k] = normalize(farplanePositions[k] - gCamPos);
 	}
 
-	/*rayPos += nx * fovCorrection;
-	rayPos += ny * aspectCorrection;*/
+
 
 	Ray r;
-	r.o = gCamPos;
-	//r.d = normalize(rayPos - gCamPos);
 
-	
 	float3 accumulatedDiff = float3(0.0f, 0.0f, 0.0f);
 	float3 accumulatedSpec = float3(0.0f, 0.0f, 0.0f);
 
-	for (int samples = 0; samples < 1; samples++)
+	for (int samples = 0; samples < 9; samples++)
 	{
 		r.d = rayDirections[samples];
 		r.o = gCamPos;
@@ -526,15 +516,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			float dduu = 0.0f;
 			float ddvv = 0.0f;
 			int triangleIndex = -1;
-			//for (i = 0; i < gTriangleCount; i++)
-			//{
-			//	float previous = intersectionDistance;
-			//	RayVSTriangle(gTriangles[i], r, intersectionDistance, dduu, ddvv, intersectionNormal, intersectionTangent);
-			//	if (intersectionDistance < previous)
-			//	{
-			//		triangleIndex = i;
-			//	}
-			//}
+
 			TraverseOctTree(r, intersectionDistance, dduu, ddvv, triangleIndex, intersectionNormal, intersectionTangent, rcpDir);
 
 			if (intersectionDistance < 0.0f)
@@ -576,7 +558,6 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			{
 				SpotLightContribution(r.o, intersectionPoint, intersectionNormal, gSpotLights[i], lspec, ldiffuse,rcpDir);
 			}
-			//CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
 
 			accumulatedDiff += ldiffuse * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
 			accumulatedSpec += lspec * (pow(0.8f, bounces + 1) / (bounces + 1)) * texColor;
@@ -587,7 +568,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		}
 	}
 
-	accumulatedDiff /= 1.0f;
-	accumulatedSpec /= 1.0f;
+	accumulatedDiff /= 9.0f;
+	accumulatedSpec /= 9.0f;
 	output[threadID.xy] = saturate(float4((accumulatedDiff + accumulatedSpec), 1.0f));
 }

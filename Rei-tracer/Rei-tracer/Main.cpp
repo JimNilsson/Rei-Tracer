@@ -108,8 +108,8 @@ int main(int argc, char** argv)
 			-1, 0, 0, 0));
 #pragma endregion
 	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
-	unsigned tadd2 = objLoader.LoadOBJ("sphere2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
-	//tadd2 -= 1180;
+	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+
 	unsigned nodecount;
 	OctNode* tree = nullptr;
 	objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2, 6 + trianglesAdded, &tree, 1, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
@@ -136,15 +136,15 @@ int main(int argc, char** argv)
 	int pointLightCount = 5;
 	PointLight pointlights[10];
 	pointlights[3] = PointLight(-9.0f, -9.0f, -0.0f, 0.33f, 1.0f, 1.0f, 1.0f, 15.0f);
-	pointlights[4] = PointLight(-9.0f, -7.0f, -0.0f, 0.33f, 1.0f, 0.8f, 1.0f, 15.0f);
+	pointlights[4] = PointLight(-9.0f, -7.0f, -0.0f, 0.33f, 0.3f, 0.8f, 1.0f, 15.0f);
 	pointlights[5] = PointLight(-9.0f, -5.0f, -0.0f, 0.33f, 1.0f, 0.6f, 1.0f, 15.0f);
-	pointlights[6] = PointLight(-9.0f, -3.0f, -0.0f, 0.33f, 1.0f, 0.4f, 1.0f, 15.0f);
-	pointlights[7] = PointLight(-9.0f, -1.0f, -0.0f, 0.33f, 1.0f, 0.2f, 1.0f, 15.0f);
-	pointlights[8] = PointLight(-9.0f, 1.0f, -0.0f, 0.33f, 0.8f, 0.0f, 1.0f, 15.0f);
-	pointlights[9] = PointLight(-9.0f, 3.0f, -0.0f, 0.33f, 0.6f, 0.0f, 1.0f, 15.0f);
-	pointlights[0] = PointLight(-9.0f, 5.0f, -0.0f, 0.33f, 0.4f, 0.0f, 1.0f, 15.0f);
-	pointlights[1] = PointLight(-9.0f, 7.0f, -0.0f, 0.33f, 0.2f, 0.0f, 1.0f, 15.0f);
-	pointlights[2] = PointLight(-9.0f, 9.0f, -0.0f, 0.33f, 0.0f, 0.0f, 1.0f, 15.0f);
+	pointlights[6] = PointLight(-9.0f, -3.0f, -0.0f, 0.33f, 0.5f, 0.9f, 1.0f, 15.0f);
+	pointlights[7] = PointLight(-9.0f, -1.0f, -0.0f, 0.33f, 0.8f, 0.2f, 1.0f, 15.0f);
+	pointlights[8] = PointLight(-9.0f, 1.0f, -0.0f, 0.33f, 1.0f, 0.7f, 0.5f, 15.0f);
+	pointlights[9] = PointLight(-9.0f, 3.0f, -0.0f, 0.33f, 0.3f, 0.7f, 0.2f, 15.0f);
+	pointlights[0] = PointLight(-9.0f, 5.0f, -0.0f, 0.33f, 0.6f, 0.7f, 0.8f, 15.0f);
+	pointlights[1] = PointLight(-9.0f, 7.0f, -0.0f, 0.33f, 0.7f, 0.9f, 0.0f, 15.0f);
+	pointlights[2] = PointLight(-9.0f, 9.0f, -0.0f, 0.33f, 0.2f, 0.1f, 0.9f, 15.0f);
 	graphics->SetPointLights(pointlights, pointLightCount);
 
 	SpotLight spotlights[10];
@@ -180,10 +180,10 @@ int main(int argc, char** argv)
 			graphics->DecreaseBounceCount();
 		if (input->IsKeyDown(SDLK_u))
 		{
-			//for (int i = 0; i < pointLightCount; i++)
-			//{
-			//	MovePointlight(pointlights[i], dt);
-			//}
+			for (int i = 0; i < pointLightCount; i++)
+			{
+				MovePointlight(pointlights[i], dt);
+			}
 			graphics->SetPointLights(&pointlights[0], pointLightCount);
 		}
 		if (input->WasKeyPressed(SDLK_l))
@@ -193,10 +193,7 @@ int main(int argc, char** argv)
 		cam->RotateYaw(input->GetMouseXMovement() * dt *0.01f);
 		cam->RotatePitch(input->GetMouseYMovement() * dt * 0.01f);
 		core->Update();
-		//std::stringstream ss;
-		//ss << "FPS: " << static_cast<int>(1.0f / timer->GetDeltaTime());
 
-		//Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 	}
 	delete[] tree;
 	delete[] triangles;
