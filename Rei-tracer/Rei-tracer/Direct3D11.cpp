@@ -192,7 +192,8 @@ void Direct3D11::Draw()
 	
 	_computeShader->Set();
 	_timer->Start();
-	_deviceContext->Dispatch((ccam.width / 32) + ((ccam.width % 32) ? 1 : 0), (ccam.height / 32) + ((ccam.height % 32) ? 1 : 0), 1);
+	const int threadDim = 32;
+	_deviceContext->Dispatch((ccam.width / threadDim) + ((ccam.width % threadDim) ? 1 : 0), (ccam.height / threadDim) + ((ccam.height % threadDim) ? 1 : 0), 1);
 	_timer->Stop();
 	_computeShader->Unset();
 	_timer->GetTime();
@@ -205,6 +206,7 @@ void Direct3D11::Draw()
 		std::stringstream ss;
 		ss << "Avg frametime: " << acc / frames;
 		Core::GetInstance()->GetWindow()->SetTitle(ss.str());
+		printf("%.2f\n", acc / frames);
 		acc = 0.0f;
 		frames = 0;
 	}

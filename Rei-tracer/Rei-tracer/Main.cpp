@@ -22,14 +22,14 @@ int main(int argc, char** argv)
 
 	Core::CreateInstance();
 	Core* core = Core::GetInstance();
-	core->Init(400, 400, false);
+	core->Init(384, 384, false);
 	InputManager* input = core->GetInputManager();
 	IGraphics* graphics = core->GetGraphics();
 	CameraManager* cam = core->GetCameraManager();
 	Window* window = core->GetWindow();
 	Timer* timer = core->GetTimer();
 
-	cam->AddCamera(0.0f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f, 3.14f / 2.0f, (float)window->GetWidth() / (float)window->GetHeight(), 0.0f, 1.0f, 0.0f, 1.0f, 50.0f);
+	cam->AddCamera(0.0f, 1.0f, 3.0f, 0.0f, 0.0f, -1.0f, 3.14f / 2.0f, (float)window->GetWidth() / (float)window->GetHeight(), 0.0f, 1.0f, 0.0f, 1.0f, 50.0f);
 	cam->CycleActiveCamera();
 
 	Sphere spheres[5];
@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 
 	OBJLoader objLoader;
 #pragma region
-	Triangle triangles[MAX_TRIANGLES];
+	Triangle* triangles = new Triangle[MAX_TRIANGLES];
 	//Floor
 	triangles[0] = Triangle(TriangleVertex(-10, -10, 10, 0,
 		0, 1, 0, 0,
@@ -108,10 +108,12 @@ int main(int argc, char** argv)
 			-1, 0, 0, 0));
 #pragma endregion
 	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
-	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	unsigned tadd2 = objLoader.LoadOBJ("sphere2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	//tadd2 -= 1180;
 	unsigned nodecount;
 	OctNode* tree = nullptr;
-	objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2,6 + trianglesAdded, &tree, 2, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
+	objLoader.PartitionMesh(&triangles[6 + trianglesAdded], tadd2, 6 + trianglesAdded, &tree, 1, nodecount, MAX_TRIANGLES - 6 - trianglesAdded - tadd2);
+
 	MeshIndices mi[2];
 	mi[0].lowerIndex = 0;
 	mi[0].upperIndex = 6 + trianglesAdded;
@@ -131,7 +133,7 @@ int main(int argc, char** argv)
 	graphics->SetTextures();
 
 
-	int pointLightCount = 8;
+	int pointLightCount = 5;
 	PointLight pointlights[10];
 	pointlights[3] = PointLight(-9.0f, -9.0f, -0.0f, 0.33f, 1.0f, 1.0f, 1.0f, 15.0f);
 	pointlights[4] = PointLight(-9.0f, -7.0f, -0.0f, 0.33f, 1.0f, 0.8f, 1.0f, 15.0f);
@@ -178,12 +180,16 @@ int main(int argc, char** argv)
 			graphics->DecreaseBounceCount();
 		if (input->IsKeyDown(SDLK_u))
 		{
-			for (int i = 0; i < pointLightCount; i++)
-			{
-				MovePointlight(pointlights[i], dt);
-			}
+			//for (int i = 0; i < pointLightCount; i++)
+			//{
+			//	MovePointlight(pointlights[i], dt);
+			//}
 			graphics->SetPointLights(&pointlights[0], pointLightCount);
 		}
+		if (input->WasKeyPressed(SDLK_l))
+			pointLightCount = min(pointLightCount + 1, 10);
+		if (input->WasKeyPressed(SDLK_k))
+			pointLightCount = max(pointLightCount - 1, 0);
 		cam->RotateYaw(input->GetMouseXMovement() * dt *0.01f);
 		cam->RotatePitch(input->GetMouseYMovement() * dt * 0.01f);
 		core->Update();
@@ -193,6 +199,7 @@ int main(int argc, char** argv)
 		//Core::GetInstance()->GetWindow()->SetTitle(ss.str());
 	}
 	delete[] tree;
+	delete[] triangles;
 	Core::ShutDown();
 	return 0;
 }

@@ -204,39 +204,7 @@ void RayVSTriangleDistance(Triangle t, Ray r, out float dist)
 		return;
 	dist = f * dot(e2, rr);
 }
-//struct CircularLight
-//{
-//	float3 color;
-//	float range;
-//	float3 normal;
-//	float intensity;
-//	float3 position;
-//	float radius;
-//
-//};
-//
-//void CircularLightContribution(float3 rayOrigin, float3 origin, float3 normal, CircularLight clight, inout float3 specular, inout float3 diffuse)
-//{
-//	float3 toLight = clight.position - origin;
-//
-//	float3 projected = -toLight - ((dot(-toLight, clight.normal)/dot(clight.normal,clight.normal)) * clight.normal);
-//	float projDist = length(projected);
-//	projected /= projDist;
-//	
-//	float3 onCircle = clight.position + projected * min(clight.radius, projDist);
-//	float3 circleToPos = origin - onCircle;
-//	float dist = length(circleToPos);
-//	circleToPos /= dist;
-//
-//	float NdL = dot(-normal, clight.normal) * dot(circleToPos, clight.normal);
-//	if (NdL < 0.0f)
-//		return;
-//	float divby = (dist / clight.range) + 1.0f;
-//
-//	float attenuation = pow(NdL,7.0f) * clight.intensity / (divby * divby);
-//	diffuse += saturate(clight.color * attenuation);
-//	specular.r += 0.000001f;//blabla
-//}
+
 bool RayVSBox(Ray r, float3 rcpDir, Box b)
 {
 	float tx1 = (b.min.x - r.o.x)*rcpDir.x;
@@ -257,8 +225,17 @@ bool RayVSBox(Ray r, float3 rcpDir, Box b)
 	return tmax >= max(tmin, 0.0f);
 }
 
-void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inout int triangleIndex, inout float3 normal, out float4 tangent)
+void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inout int triangleIndex, inout float3 normal, out float4 tangent, float3 rcpDir)
 {
+	//for (int i = 0; i < gTriangleCount; i++)
+	//{
+	//	float previous = dist;
+	//	RayVSTriangle(gTriangles[i], r, dist, u, v, normal, tangent);
+	//	if (dist < previous)
+	//	{
+	//		triangleIndex = i;
+	//	}
+	//}
 	//For each MeshIndices traverse octtree if any, else traverse triangles
 	float previous = dist;
 	for (int i = 0; i < gMeshIndexCount; i++)
@@ -267,10 +244,10 @@ void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inou
 		{
 			//We have an octtree to traverse
 			//No recursion in hlsl, we'll have to use a stack
-			int stack[64];
+			int stack[73];
 			int stackPtr = 0;
 			int nodeIndex = gMeshIndices[i].rootPartition;
-			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
+			
 
 			stack[stackPtr] = nodeIndex;
 			stackPtr++;
@@ -322,9 +299,18 @@ void TraverseOctTree(Ray r, inout float dist, inout float u, inout float v, inou
 	}
 }
 
-bool TraverseOctTreeForShadows(Ray r, float dist)
+bool TraverseOctTreeForShadows(Ray r, float dist, float3 rcpDir)
 {
+	//float t0;
+	//for (int i = 0; i < gTriangleCount; i++)
+	//{
+	//	RayVSTriangleDistance(gTriangles[i], r, t0);
+	//	if (t0 > 0.0f && t0 < dist)
+	//		return true;
+	//}
+	//return false;
 	//For each MeshIndices traverse octtree if any, else traverse triangles
+	
 	float comp = -1.0f;
 	for (int i = 0; i < gMeshIndexCount; i++)
 	{
@@ -332,10 +318,10 @@ bool TraverseOctTreeForShadows(Ray r, float dist)
 		{
 			//We have an octtree to traverse
 			//No recursion in hlsl, we'll have to use a stack
-			int stack[64];
+			int stack[73];
 			int stackPtr = 0;
 			int nodeIndex = gMeshIndices[i].rootPartition;
-			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
+			
 
 			stack[stackPtr] = nodeIndex;
 			stackPtr++;
@@ -386,7 +372,7 @@ bool TraverseOctTreeForShadows(Ray r, float dist)
 	return false;
 }
 
-void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotLight spotlight, inout float3 specular, inout float3 diffuse)
+void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotLight spotlight, inout float3 specular, inout float3 diffuse, float3 rcpDir)
 {
 	float3 toLight = spotlight.position - origin;
 	float dist = length(toLight);
@@ -428,7 +414,7 @@ void SpotLightContribution(float3 rayOrigin, float3 origin, float3 normal, SpotL
 	}
 }
 
-void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse)
+void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, PointLight pointlight, inout float3 specular, inout float3 diffuse, float3 rcpDir)
 {
 	float3 toLight = pointlight.position - origin;
 	float dist = length(toLight);
@@ -458,7 +444,7 @@ void PointLightContribution(float3 rayOrigin, float3 origin, float3 normal, Poin
 			return;
 	}*/
 
-	if (TraverseOctTreeForShadows(r, dist))
+	if (TraverseOctTreeForShadows(r, dist, rcpDir))
 		return;
 
 
@@ -529,6 +515,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 		r.o = gCamPos;
 		for (int bounces = 0; bounces < gBounceCount + 1; bounces++)
 		{
+			float3 rcpDir = float3(1.0f, 1.0f, 1.0f) / r.d;
 			float3 intersectionNormal = r.d;
 			float3 intersectionPoint = r.o;
 			float4 intersectionTangent;
@@ -550,7 +537,7 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 			//		triangleIndex = i;
 			//	}
 			//}
-			TraverseOctTree(r, intersectionDistance, dduu, ddvv, triangleIndex, intersectionNormal, intersectionTangent);
+			TraverseOctTree(r, intersectionDistance, dduu, ddvv, triangleIndex, intersectionNormal, intersectionTangent, rcpDir);
 
 			if (intersectionDistance < 0.0f)
 				break;
@@ -580,24 +567,16 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 					}
 				}
 			}
-			//CircularLight clight;
-			//clight.position = float3(15.0f, 15.0f, -10.0f);
-			//clight.normal = float3(0.0f, -1.0f, 0.0f);
-			//clight.intensity = 3.0f;
-			//clight.range = 15.0f;
-			//clight.color = float3(0.5f, 0.80f, 0.10f);
-			//clight.radius = 0.15f;
-
 
 			float3 ldiffuse = float3(0.0f, 0.0f, 0.0f);
 			float3 lspec = float3(0.0f, 0.0f, 0.0f);
 			for (i = 0; i < gPointLightCount; i++)
 			{
-				PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse);
+				PointLightContribution(r.o, intersectionPoint, intersectionNormal, gPointLights[i], lspec, ldiffuse,rcpDir);
 			}
 			for (i = 0; i < gSpotLightCount; i++)
 			{
-				SpotLightContribution(r.o, intersectionPoint, intersectionNormal, gSpotLights[i], lspec, ldiffuse);
+				SpotLightContribution(r.o, intersectionPoint, intersectionNormal, gSpotLights[i], lspec, ldiffuse,rcpDir);
 			}
 			//CircularLightContribution(r.o, intersectionPoint, intersectionNormal, clight, lspec, ldiffuse);
 
