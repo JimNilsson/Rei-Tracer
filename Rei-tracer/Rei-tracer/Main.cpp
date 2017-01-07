@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 			-1, 0, 0, 0));
 #pragma endregion
 	unsigned trianglesAdded = objLoader.LoadOBJ("cube.obj", &triangles[6], MAX_TRIANGLES - 6);
-	unsigned tadd2 = objLoader.LoadOBJ("sphere1.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
+	unsigned tadd2 = objLoader.LoadOBJ("sphere2.obj", &triangles[6 + trianglesAdded], MAX_TRIANGLES - 6 - trianglesAdded);
 
 	unsigned nodecount;
 	OctNode* tree = nullptr;
@@ -135,16 +135,16 @@ int main(int argc, char** argv)
 
 	int pointLightCount = 5;
 	PointLight pointlights[10];
-	pointlights[3] = PointLight(-9.0f, -9.0f, -0.0f, 0.33f, 1.0f, 1.0f, 1.0f, 15.0f);
-	pointlights[4] = PointLight(-9.0f, -7.0f, -0.0f, 0.33f, 0.3f, 0.8f, 1.0f, 15.0f);
-	pointlights[5] = PointLight(-9.0f, -5.0f, -0.0f, 0.33f, 1.0f, 0.6f, 1.0f, 15.0f);
-	pointlights[6] = PointLight(-9.0f, -3.0f, -0.0f, 0.33f, 0.5f, 0.9f, 1.0f, 15.0f);
+	pointlights[3] = PointLight(-5.0f, -9.0f, -0.0f, 0.33f, 1.0f, 1.0f, 1.0f, 15.0f);
+	pointlights[4] = PointLight(-3.0f, -7.0f, -0.0f, 0.33f, 0.3f, 0.8f, 1.0f, 15.0f);
+	pointlights[5] = PointLight(2.0f, -5.0f, -0.0f, 0.33f, 1.0f, 0.6f, 1.0f, 15.0f);
+	pointlights[6] = PointLight(4.0f, -3.0f, -0.0f, 0.33f, 0.5f, 0.9f, 1.0f, 15.0f);
 	pointlights[7] = PointLight(-9.0f, -1.0f, -0.0f, 0.33f, 0.8f, 0.2f, 1.0f, 15.0f);
-	pointlights[8] = PointLight(-9.0f, 1.0f, -0.0f, 0.33f, 1.0f, 0.7f, 0.5f, 15.0f);
-	pointlights[9] = PointLight(-9.0f, 3.0f, -0.0f, 0.33f, 0.3f, 0.7f, 0.2f, 15.0f);
-	pointlights[0] = PointLight(-9.0f, 5.0f, -0.0f, 0.33f, 0.6f, 0.7f, 0.8f, 15.0f);
+	pointlights[8] = PointLight(7.0f, 1.0f, -0.0f, 0.33f, 1.0f, 0.7f, 0.5f, 15.0f);
+	pointlights[9] = PointLight(3.0f, 3.0f, -0.0f, 0.33f, 0.3f, 0.7f, 0.2f, 15.0f);
+	pointlights[0] = PointLight(8.0f, 5.0f, -0.0f, 0.33f, 0.6f, 0.7f, 0.8f, 15.0f);
 	pointlights[1] = PointLight(-9.0f, 7.0f, -0.0f, 0.33f, 0.7f, 0.9f, 0.0f, 15.0f);
-	pointlights[2] = PointLight(-9.0f, 9.0f, -0.0f, 0.33f, 0.2f, 0.1f, 0.9f, 15.0f);
+	pointlights[2] = PointLight(-5.0f, 9.0f, -0.0f, 0.33f, 0.2f, 0.1f, 0.9f, 15.0f);
 	graphics->SetPointLights(pointlights, pointLightCount);
 
 	SpotLight spotlights[10];
