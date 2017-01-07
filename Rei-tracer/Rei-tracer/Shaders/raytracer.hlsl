@@ -472,24 +472,22 @@ void main( uint3 threadID : SV_DispatchThreadID, uint3 groupThreadID : SV_GroupT
 	float nx = (threadID.x - gWidth / 2.0f) / gWidth;
 	float ny = (threadID.y - gHeight / 2.0f) / gHeight;
 
-	float dx = 1.0f / gWidth;
-	float dy = 1.0f / gHeight;
-
-
+	float dx = 0.5f / gWidth; //Used to offset ray directions for super sampling
+	float dy = 0.5f / gHeight;
 
 	float3 fovCorrection = (gCamFar / tan(gFOV / 2.0f)) * gCamRight;
 	float3 aspectCorrection = (gCamFar / gAspectRatio) * -gCamUp;
 	float3 farplanePositions[9];
 
-	farplanePositions[0] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper left
-	farplanePositions[1] = rayPos + (nx - 0.0f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper middle
-	farplanePositions[2] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny + 0.5f * dy) * aspectCorrection; //Upper right
-	farplanePositions[3] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle left
-	farplanePositions[4] = rayPos + (nx + 0.0f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle
-	farplanePositions[5] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny + 0.0f * dy) * aspectCorrection; //Middle right
-	farplanePositions[6] = rayPos + (nx - 0.5f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower left
-	farplanePositions[7] = rayPos + (nx - 0.0f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower middle
-	farplanePositions[8] = rayPos + (nx + 0.5f * dx) * fovCorrection + (ny - 0.5f * dy) * aspectCorrection; //Lower right
+	farplanePositions[0] = rayPos + (nx - dx) * fovCorrection + (ny + dy) * aspectCorrection; //Upper left
+	farplanePositions[1] = rayPos + (nx) * fovCorrection + (ny + dy) * aspectCorrection; //Upper middle
+	farplanePositions[2] = rayPos + (nx + dx) * fovCorrection + (ny + dy) * aspectCorrection; //Upper right
+	farplanePositions[3] = rayPos + (nx - dx) * fovCorrection + (ny) * aspectCorrection; //Middle left
+	farplanePositions[4] = rayPos + (nx) * fovCorrection + (ny) * aspectCorrection; //Middle
+	farplanePositions[5] = rayPos + (nx + dx) * fovCorrection + (ny) * aspectCorrection; //Middle right
+	farplanePositions[6] = rayPos + (nx - dx) * fovCorrection + (ny - dy) * aspectCorrection; //Lower left
+	farplanePositions[7] = rayPos + (nx) * fovCorrection + (ny - dy) * aspectCorrection; //Lower middle
+	farplanePositions[8] = rayPos + (nx + dx) * fovCorrection + (ny - dy) * aspectCorrection; //Lower right
 	
 	float3 rayDirections[9];
 	[unroll]

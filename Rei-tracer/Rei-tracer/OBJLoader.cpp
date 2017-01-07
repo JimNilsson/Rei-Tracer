@@ -104,22 +104,19 @@ unsigned OBJLoader::LoadOBJ(const std::string & filename, Triangle * triangleArr
 		const XMFLOAT2& u2 = realTex[i + 1];
 		const XMFLOAT2& u3 = realTex[i + 2];
 
-		float x1 = v2.x - v1.x;
-		float x2 = v3.x - v1.x;
-		float y1 = v2.y - v1.y;
-		float y2 = v3.y - v1.y;
-		float z1 = v2.z - v1.z;
-		float z2 = v3.z - v1.z;
+		//Edge positions
+		XMFLOAT3 deltaPos1(v2.x - v1.x, v2.y - v1.y, v2.z - v1.z);
+		XMFLOAT3 deltaPos2(v3.x - v1.x, v3.y - v1.y, v3.z - v1.z);
+		//Edge UVs
+		XMFLOAT2 deltaTex1(u2.x - u1.x, u3.x - u1.x);
+		XMFLOAT2 deltaTex2(u2.y - u1.y, u3.y - u1.y);
 
-		float s1 = u2.x - u1.x;
-		float s2 = u3.x - u1.x;
-		float t1 = u2.y - u1.y;
-		float t2 = u3.y - u1.y;
+		float r = 1.0f / (deltaTex1.x * deltaTex2.y - deltaTex1.y * deltaTex2.x);
+		
+		XMFLOAT4 tangent(r*(deltaPos1.x * deltaTex2.y - deltaPos2.x * deltaTex1.y), r*(deltaPos1.y * deltaTex2.y - deltaPos2.y * deltaTex1.y), r*(deltaPos1.z * deltaTex2.y - deltaPos2.z * deltaTex1.y), 1.0f);
 
-		float r = 1.0f / (s1 * t2 - s2 * t1);
-
-		XMFLOAT3 sdir = XMFLOAT3((t2*x1 - t1*x2) * r, (t2*y1 - t1*y2)*r, (t2*z1 - t1*z2)*r);
-		XMFLOAT3 tdir = XMFLOAT3((s1*x2 - s2*x1)*r, (s1*y2 - s2*y1)*r, (s1*z2 - s2*z1)*r);
+		XMFLOAT3 sdir = XMFLOAT3((deltaTex2.y*deltaPos1.x - deltaTex2.x*deltaPos2.x) * r, (deltaTex2.y*deltaPos1.y - deltaTex2.x*deltaPos2.y)*r, (deltaTex2.y*deltaPos1.z - deltaTex2.x*deltaPos2.z)*r);
+		XMFLOAT3 tdir = XMFLOAT3((deltaTex1.x*deltaPos2.x - deltaTex1.y*deltaPos1.x)*r, (deltaTex1.x*deltaPos2.y - deltaTex1.y*deltaPos1.y)*r, (deltaTex1.x*deltaPos2.z - deltaTex1.y*deltaPos1.z)*r);
 
 		tan1[i].x += sdir.x;
 		tan1[i].y += sdir.y;
@@ -144,8 +141,6 @@ unsigned OBJLoader::LoadOBJ(const std::string & filename, Triangle * triangleArr
 		tan2[i + 2].x += tdir.x;
 		tan2[i + 2].y += tdir.y;
 		tan2[i + 2].z += tdir.z;
-
-
 	}
 
 	for (unsigned i = 0; i < realPos.size(); ++i)
@@ -156,6 +151,7 @@ unsigned OBJLoader::LoadOBJ(const std::string & filename, Triangle * triangleArr
 		XMVECTOR tangent = XMVector3Normalize(t - n * XMVector3Dot(n, t));
 
 		XMStoreFloat4(&realTan[i], tangent);
+		//Calculate handedness
 		realTan[i].w = XMVectorGetX(XMVector3Dot(XMVector3Cross(n, t), XMLoadFloat4(&tan2[i]))) < 0.0f ? -1.0f : 1.0f;
 	}
 
